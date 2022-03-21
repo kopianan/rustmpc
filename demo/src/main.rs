@@ -9,15 +9,16 @@ use futures::StreamExt;
 
 use rand::rngs::OsRng;
 
-use bls::basic_bls::BLSSignature;
-use bls::threshold_bls::state_machine::keygen::{Keygen, LocalKey};
-use bls::threshold_bls::state_machine::sign::Sign;
-use curv::elliptic::curves::bls12_381::{g1::GE as GE1, g2::GE as GE2};
-use curv::elliptic::curves::traits::ECPoint;
 use mpc_over_signal::{DeviceStore, Group, ParticipantIdentity, SignalClient};
 
 mod cli;
 use cli::Cmd;
+
+mod common;
+mod dkg;
+mod zk_pdl_with_slack;
+
+use dkg::keygen::Keygen;
 
 #[actix::main]
 async fn main() -> Result<()> {
@@ -29,8 +30,8 @@ async fn main() -> Result<()> {
         Cmd::Login(args) => login(args).await,
         Cmd::Me(args) => me(args).await,
         Cmd::Keygen(args) => keygen(args).await,
-        Cmd::Sign(args) => sign(args).await,
-        Cmd::Verify(args) => verify(args).await,
+        //Cmd::Sign(args) => sign(args).await,
+        //Cmd::Verify(args) => verify(args).await,
     }
 }
 
@@ -161,6 +162,14 @@ async fn keygen_run(
         .start_listening_for_incoming_messages(device_secrets)
         .await
         .context("connecting to signal api")?;
+    
+    let mut output_file = tokio::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(output)
+        .await
+        .context("cannot create output file")?;
+
     let (incoming, outgoing) = signal_client
         .join_computation(me.addr, group)
         .await
@@ -173,14 +182,14 @@ async fn keygen_run(
         .await
         .map_err(|e| anyhow!("execute keygen protocol: {}", e))?;
 
-    save_local_key(&local_key, output)
+    let ser_output = serde_json::to_vec_pretty(&local_key).context("serialize output")?;
+    tokio::io::copy(&mut ser_output.as_slice(), &mut output_file)
         .await
-        .context("save local key to file")?;
+        .context("save output to file")?;
 
-    let public_key = ECPoint::pk_to_key_slice(&local_key.public_key());
-    Ok(public_key)
+    Ok((ser_output))
 }
-
+/*
 async fn sign(args: cli::SignArgs) -> Result<()> {
     let signal_client = signal_client(args.server)
         .await
@@ -270,7 +279,7 @@ async fn verify(args: cli::VerifyArgs) -> Result<()> {
 
     Ok(())
 }
-
+*/
 async fn signal_client(server: cli::SignalServer) -> Result<SignalClient> {
     let mut builder = SignalClient::builder()?;
     builder.set_server_host(server.host)?;
@@ -312,7 +321,7 @@ async fn read_group(path: impl AsRef<Path>) -> Result<Group> {
     }
     Ok(Group::new(parties))
 }
-
+/*
 async fn save_local_key(local_key: &LocalKey, output: impl AsRef<Path>) -> Result<()> {
     let serialized = serde_json::to_vec_pretty(local_key).context("serialize")?;
     tokio::fs::write(output, serialized).await.context("write")
@@ -322,3 +331,4 @@ async fn read_local_key(path: impl AsRef<Path>) -> Result<LocalKey> {
     let content = tokio::fs::read(path).await.context("read")?;
     serde_json::from_slice(&content).context("deserialize")
 }
+*/
