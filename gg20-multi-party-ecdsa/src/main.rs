@@ -120,7 +120,7 @@ async fn keygen(args: cli::KeygenArgs) -> Result<()> {
         "threshold value is more than number of parties"
     );
 
-    let public_key = keygen_run(
+    keygen_run(
         signal_client,
         device_secrets.clone(),
         group,
@@ -136,8 +136,6 @@ async fn keygen(args: cli::KeygenArgs) -> Result<()> {
         tracing::event!(tracing::Level::ERROR, %err, "Failed to save secrets to file");
     }
 
-    println!("Public key: {}", hex::encode(public_key?));
-
     Ok(())
 }
 
@@ -151,7 +149,7 @@ async fn keygen_run(
     t: u16,
     n: u16,
     output: impl AsRef<Path>,
-) -> Result<Vec<u8>> {
+) -> Result<()> {
     device_secrets
         .write()
         .await
@@ -187,7 +185,7 @@ async fn keygen_run(
         .await
         .context("save output to file")?;
 
-    Ok((ser_output))
+    Ok(())
 }
 /*
 async fn sign(args: cli::SignArgs) -> Result<()> {
