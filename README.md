@@ -2,17 +2,15 @@
 
 ## Overview
 
-This library provides a high-level interface for connecting to Signal Server and using it to 
-exchange messages with other connected nodes (parties). Together with [round_based] crate, it 
-allows you running any MPC protocol that implements [round_based::StateMachine][SM] 
-over secure transport backed by Signal.
+This library intends to leverage on the SignalApp built by ZenGo Team to exchange messages 
+with other connected nodes (parties) over secure transport backed by Signal. We use it to 
+perform DKG (Distributed Key Generation),signing and verification based on multi-party ECDSA
+developed by the ZenGo Team : https://github.com/ZenGo-X/multi-party-ecdsa
 
+Together with [round_based] crate, it allows you running any MPC protocol that implements [round_based::StateMachine][SM] 
 [round_based]: https://docs.rs/round-based
 [SM]: https://docs.rs/round-based/*/round_based/trait.StateMachine.html
 
-Here is a [demo] showing how to use this library to run [threshold BLS](https://github.com/ZenGo-X/multi-party-bls) keygen & signing. For more details read our [blog](https://medium.com/zengo/mpc-over-signal-977db599de66) as well. 
-
-[demo]: ./demo
 
 ### Self-hosted Signal Server
 
@@ -125,8 +123,8 @@ To run an MPC protocol that implements [round_based::StateMachine][SM], use
 
 ## Supported Rust version
 
-The only supported version is Rust Nightly 1.49.0. This is a limitation of 
-[libsignal-protocol crate][libsignal].
+Currently we use Rust Nightly 1.54.0 to allow compatibility with
+both MPC with signal library and Multi-party ECDSA.
 
 [libsignal]: https://github.com/signalapp/libsignal-client
 
