@@ -40,7 +40,7 @@ use zk_paillier::zkproofs::NiCorrectKeyProof;
 use zk_paillier::zkproofs::{CompositeDLogProof, DLogStatement};
 
 use crate::common::ErrorType;
-use crate::zk_pdl_with_slack::{PDLwSlackProof, PDLwSlackStatement, PDLwSlackWitness};
+use crate::utilities::zk_pdl_with_slack::{PDLwSlackProof, PDLwSlackStatement, PDLwSlackWitness};
 use curv::cryptographic_primitives::proofs::sigma_valid_pedersen::PedersenProof;
 
 use std::convert::TryInto;

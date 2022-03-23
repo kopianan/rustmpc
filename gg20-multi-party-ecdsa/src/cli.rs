@@ -19,8 +19,8 @@ pub enum Cmd {
     Me(MeArgs),
     #[structopt(display_order = 3)]
     Keygen(KeygenArgs),
-    //#[structopt(display_order = 4)]
-    //Sign(SignArgs),
+    #[structopt(display_order = 4)]
+    Sign(SignArgs),
     //#[structopt(display_order = 5)]
     //Verify(VerifyArgs),
 }
@@ -128,7 +128,7 @@ pub struct SignArgs {
 
     /// Message to sign
     #[structopt(long, parse(from_str), display_order = 3)]
-    pub digits: Bytes,
+    pub digits: String,
 
     #[structopt(flatten)]
     pub secrets: SecretsFile,

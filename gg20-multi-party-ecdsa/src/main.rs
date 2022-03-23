@@ -10,15 +10,20 @@ use futures::StreamExt;
 use rand::rngs::OsRng;
 
 use mpc_over_signal::{DeviceStore, Group, ParticipantIdentity, SignalClient};
+use dkg::rounds::LocalKey;
 
 mod cli;
 use cli::Cmd;
 
 mod common;
 mod dkg;
-mod zk_pdl_with_slack;
+mod signing;
+mod utilities;
 
 use dkg::keygen::Keygen;
+use signing::sign::{
+    OfflineStage, SignManual,
+};
 
 #[actix::main]
 async fn main() -> Result<()> {
@@ -30,7 +35,7 @@ async fn main() -> Result<()> {
         Cmd::Login(args) => login(args).await,
         Cmd::Me(args) => me(args).await,
         Cmd::Keygen(args) => keygen(args).await,
-        //Cmd::Sign(args) => sign(args).await,
+        Cmd::Sign(args) => sign(args).await,
         //Cmd::Verify(args) => verify(args).await,
     }
 }
@@ -180,40 +185,39 @@ async fn keygen_run(
         .await
         .map_err(|e| anyhow!("execute keygen protocol: {}", e))?;
 
+    // save local key shares into json file
     let ser_output = serde_json::to_vec_pretty(&local_key).context("serialize output")?;
     tokio::io::copy(&mut ser_output.as_slice(), &mut output_file)
         .await
         .context("save output to file")?;
-
+    
     Ok(())
 }
-/*
+
 async fn sign(args: cli::SignArgs) -> Result<()> {
+    //establish the signal client
     let signal_client = signal_client(args.server)
         .await
         .context("constructing signal client")?;
+    //read the MPC device id, address, public key
     let mut device_secrets = DeviceStore::from_file(&args.secrets.path)
         .await
         .context("read device from file")?;
     let me = device_secrets.read().await.me();
-
+    //read the group.json file and ensure this device is included
     let group = read_group(args.group).await.context("read group")?;
     let my_ind = match group.party_index(&me.addr) {
         Some(i) => i,
         None => bail!("group must contain this party too"),
     };
-
-    let local_key = read_local_key(args.local_key)
-        .await
-        .context("read local key")?;
-
-    let signature = sign_run(
+    
+    sign_run(
         signal_client,
         device_secrets.clone(),
         group,
         me,
         my_ind,
-        local_key,
+        args.local_key,
         args.digits,
     )
     .await;
@@ -222,7 +226,6 @@ async fn sign(args: cli::SignArgs) -> Result<()> {
         tracing::event!(tracing::Level::ERROR, %err, "Failed to save secrets to file");
     }
 
-    println!("Signature: {}", hex::encode(signature?));
     Ok(())
 }
 
@@ -231,11 +234,19 @@ async fn sign_run(
     device_secrets: DeviceStore,
     group: Group,
     me: ParticipantIdentity,
-    i: u16,
-    local_key: LocalKey,
-    message: Vec<u8>,
-) -> Result<Vec<u8>> {
-    let n = group.parties_count();
+    my_ind: u16,
+    local_key_path: std::path::PathBuf,
+    message: String,
+) -> Result<()> {
+    //Note: supposed to be an argument parsed in terminal, hardcoded for now
+    let args_parties = vec![1,2];
+    //read the local key shares stored in json file
+    let local_key = tokio::fs::read(local_key_path)
+    .await
+    .context("cannot read local share")?;
+    let local_key = serde_json::from_slice(&local_key).context("parse local share")?;
+
+    let number_of_parties = args_parties.len();
     let mut signal_client = signal_client
         .start_listening_for_incoming_messages(device_secrets)
         .await
@@ -246,17 +257,40 @@ async fn sign_run(
         .context("join computation")?;
     let incoming = incoming.fuse();
 
-    let initial =
-        Sign::new(message, i, n, local_key).context("constructing signing initial state")?;
-    let (_, sig) = round_based::AsyncProtocol::new(initial, incoming, outgoing)
+    let signing = OfflineStage::new(my_ind, args_parties, local_key)?;
+    let completed_offline_stage = round_based::AsyncProtocol::new(signing, incoming, outgoing)
         .run()
         .await
-        .map_err(|e| anyhow!("executing signing: {}", e))?;
+        .map_err(|e| anyhow!("protocol execution terminated with error: {}", e))?;
 
-    let public_key = ECPoint::pk_to_key_slice(&sig.sigma);
-    Ok(public_key)
+    let (signing, partial_signature) = SignManual::new(
+        BigInt::from_bytes(message.as_bytes()),
+        completed_offline_stage,
+    )?;
+
+    outgoing
+        .send(Msg {
+            sender: i,
+            receiver: None,
+            body: partial_signature,
+        })
+        .await?;
+
+    let partial_signatures: Vec<_> = incoming
+        .take(number_of_parties - 1)
+        .map_ok(|msg| msg.body)
+        .try_collect()
+        .await?;
+
+    let signature = signing
+        .complete(&partial_signatures)
+        .context("online stage failed")?;
+    let signature = serde_json::to_string(&signature).context("serialize signature")?;
+    println!("{}", signature);
+
+    Ok(())
 }
-
+/*
 async fn verify(args: cli::VerifyArgs) -> Result<()> {
     let public_key =
         hex::decode(args.public_key).context("public key is not valid hex encoded string")?;
@@ -319,14 +353,20 @@ async fn read_group(path: impl AsRef<Path>) -> Result<Group> {
     }
     Ok(Group::new(parties))
 }
+
 /*
-async fn save_local_key(local_key: &LocalKey, output: impl AsRef<Path>) -> Result<()> {
-    let serialized = serde_json::to_vec_pretty(local_key).context("serialize")?;
-    tokio::fs::write(output, serialized).await.context("write")
+async fn save_local_key(local_key: &LocalKey, output_file: File) -> Result<()> {
+    let ser_output = serde_json::to_vec_pretty(&local_key).context("serialize output")?;
+    tokio::io::copy(&mut ser_output.as_slice(), &mut output_file)
+        .await
+        .context("save output to file")?;
 }
 
 async fn read_local_key(path: impl AsRef<Path>) -> Result<LocalKey> {
-    let content = tokio::fs::read(path).await.context("read")?;
-    serde_json::from_slice(&content).context("deserialize")
+    let local_share = tokio::fs::read(args.local_share)
+        .await
+        .context("cannot read local share")?;
+    let local_share = serde_json::from_slice(&local_share).context("parse local share")?;
 }
 */
+

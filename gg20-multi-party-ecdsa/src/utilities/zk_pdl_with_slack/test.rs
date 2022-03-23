@@ -1,5 +1,5 @@
 #![allow(non_snake_case)]
-use super::zk_pdl_with_slack::*;
+use crate::utilities::zk_pdl_with_slack::*;
 use curv::elliptic::curves::{secp256_k1::Secp256k1, Point, Scalar};
 use curv::BigInt;
 use paillier::core::Randomness;

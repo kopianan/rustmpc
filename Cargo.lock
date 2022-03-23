@@ -1004,6 +1004,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "zeroize",
  "zk-paillier",
 ]
 

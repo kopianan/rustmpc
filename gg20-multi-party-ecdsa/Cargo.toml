@@ -11,8 +11,6 @@ default = ["curv-kzen/rust-gmp-kzen"]
 cclst = ["class_group"]
 
 [dependencies]
-#bls = { git = "https://github.com/ZenGo-X/multi-party-bls", branch = "main" }
-#curv = { git = "https://github.com/ZenGo-X/curv", tag = "v0.6.1"}
 round-based = "0.1.1"
 mpc-over-signal = { path = "../mpc-over-signal" }
 
@@ -38,6 +36,7 @@ serde_json = "1"
 ############TECDSA###################
 subtle = { version = "2" }
 serde = { version = "1.0", features = ["derive"] }
+zeroize = "1"
 thiserror = "1.0.23"
 derivative = "2"
 sha2 = "0.9"
