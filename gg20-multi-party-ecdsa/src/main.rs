@@ -5,12 +5,14 @@ use anyhow::{anyhow, bail, ensure, Context, Result};
 use structopt::StructOpt;
 
 use futures::channel::oneshot;
-use futures::StreamExt;
-
+use futures::{SinkExt, StreamExt, TryStreamExt};
 use rand::rngs::OsRng;
 
 use mpc_over_signal::{DeviceStore, Group, ParticipantIdentity, SignalClient};
-use dkg::rounds::LocalKey;
+use round_based::Msg;
+
+use curv::arithmetic::Converter;
+use curv::BigInt;
 
 mod cli;
 use cli::Cmd;
@@ -267,10 +269,10 @@ async fn sign_run(
         BigInt::from_bytes(message.as_bytes()),
         completed_offline_stage,
     )?;
-
-    outgoing
+    
+    /*outgoing
         .send(Msg {
-            sender: i,
+            sender: my_ind,
             receiver: None,
             body: partial_signature,
         })
@@ -286,7 +288,8 @@ async fn sign_run(
         .complete(&partial_signatures)
         .context("online stage failed")?;
     let signature = serde_json::to_string(&signature).context("serialize signature")?;
-    println!("{}", signature);
+    println!("{}", signature);*/
+    
 
     Ok(())
 }
