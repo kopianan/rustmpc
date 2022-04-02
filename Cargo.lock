@@ -1383,6 +1383,40 @@ dependencies = [
 ]
 
 [[package]]
+name = "gg20-mpc-ecdsa"
+version = "0.1.0"
+dependencies = [
+ "actix",
+ "anyhow",
+ "async-sse",
+ "awc",
+ "base64",
+ "centipede",
+ "class_group",
+ "curv-kzen 0.9.0",
+ "derivative",
+ "futures",
+ "hex 0.4.2",
+ "kzen-paillier",
+ "mpc-over-signal",
+ "qr2term",
+ "rand 0.7.3",
+ "round-based",
+ "rustls",
+ "serde",
+ "serde_json",
+ "sha2 0.9.3",
+ "structopt",
+ "subtle 2.4.0",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "zeroize",
+ "zk-paillier",
+]
+
+[[package]]
 name = "gimli"
 version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

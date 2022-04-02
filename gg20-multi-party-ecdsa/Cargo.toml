@@ -1,5 +1,5 @@
 [package]
-name = "demo"
+name = "gg20-mpc-ecdsa"
 version = "0.1.0"
 authors = ["Denis <dsurv@yandex.ru>"]
 edition = "2018"
