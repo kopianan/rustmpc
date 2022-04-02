@@ -1,4 +1,5 @@
 /gg18-mpc-ecdsa
+/gg20-mpc-ecdsa
 /target
 .idea/
 secrets*.json
