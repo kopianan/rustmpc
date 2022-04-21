@@ -19,8 +19,8 @@ pub enum Cmd {
     Me(MeArgs),
     #[structopt(display_order = 3)]
     Keygen(KeygenArgs),
-    //#[structopt(display_order = 4)]
-    //Sign(SignArgs),
+    #[structopt(display_order = 4)]
+    Sign(SignArgs),
     //#[structopt(display_order = 5)]
     //Verify(VerifyArgs),
 }

@@ -5,7 +5,7 @@ use anyhow::{anyhow, bail, ensure, Context, Result};
 use structopt::StructOpt;
 
 use futures::channel::oneshot;
-use futures::{SinkExt, StreamExt, TryStreamExt};
+use futures::{StreamExt};
 use rand::rngs::OsRng;
 
 use std::{env, fs};
@@ -16,8 +16,20 @@ use cli::Cmd;
 
 mod common;
 mod dkg;
+mod signing;
+mod utilities;
 
 use dkg::keygen::Keygen;
+use curv::{
+    cryptographic_primitives::{
+        secret_sharing::feldman_vss::VerifiableSS,
+    },
+    elliptic::curves::{secp256_k1::Secp256k1, Point},
+    arithmetic::Converter, BigInt,
+};
+use paillier::EncryptionKey;
+use crate::common::party_i::{Keys, SharedKeys, LocalKeyShare, Params};
+use crate::signing::sign::OfflineStage;
 
 #[actix::main]
 async fn main() -> Result<()> {
@@ -29,7 +41,7 @@ async fn main() -> Result<()> {
         Cmd::Login(args) => login(args).await,
         Cmd::Me(args) => me(args).await,
         Cmd::Keygen(args) => keygen(args).await,
-        //Cmd::Sign(args) => sign(args).await,
+        Cmd::Sign(args) => sign(args).await,
         //Cmd::Verify(args) => verify(args).await,
     }
 }
@@ -160,7 +172,7 @@ async fn keygen_run(
         .await
         .context("connecting to signal api")?;
     
-    let mut output_file = tokio::fs::OpenOptions::new()
+    let output_file = tokio::fs::OpenOptions::new()
         .write(true)
         .create_new(true)
         .open(output)
@@ -194,32 +206,57 @@ async fn keygen_run(
     
     Ok(())
 }
-/*
+
 async fn sign(args: cli::SignArgs) -> Result<()> {
-    //establish the signal client
+    //1) establish the signal client
     let signal_client = signal_client(args.server)
         .await
         .context("constructing signal client")?;
-    //read the MPC device id, address, public key
+    //2) read the MPC device id, address, public key
     let mut device_secrets = DeviceStore::from_file(&args.secrets.path)
         .await
         .context("read device from file")?;
     let me = device_secrets.read().await.me();
-    //read the group.json file and ensure this device is included
+    //3) read the group.json file and ensure this device is included
     let group = read_group(args.group).await.context("read group")?;
     let my_ind = match group.party_index(&me.addr) {
         Some(i) => i,
         None => bail!("group must contain this party too"),
     };
-    
+    //4) read the local shares from file
+    let data = fs::read_to_string(args.local_key)
+        .expect("Unable to load keys, did you run keygen first? ");
+        
+    let (party_keys, shared_keys, party_id, vss_scheme_vec, paillier_key_vector, y_sum): (
+        Keys,
+        SharedKeys,
+        u16,
+        Vec<VerifiableSS<Secp256k1>>,
+        Vec<EncryptionKey>,
+        Point<Secp256k1>,
+    ) = serde_json::from_str(&data).unwrap();
+
+    let key_share = LocalKeyShare {
+        party_keys, shared_keys, party_id, vss_scheme_vec, paillier_key_vector, y_sum
+    };
+    //5) read the message string to be signed
+    let message_str = args.digits;
+    let message = match hex::decode(message_str.clone()) {
+        Ok(x) => x,
+        Err(_e) => message_str.as_bytes().to_vec(),
+    };
+    let message = &message[..];
+    // we assume the message is already hashed (by the signer).
+    let message_bn = BigInt::from_bytes(message);
+
     sign_run(
         signal_client,
         device_secrets.clone(),
         group,
         me,
         my_ind,
-        args.local_key,
-        args.digits,
+        key_share,
+        message_bn,
     )
     .await;
 
@@ -236,18 +273,16 @@ async fn sign_run(
     group: Group,
     me: ParticipantIdentity,
     my_ind: u16,
-    local_key_path: std::path::PathBuf,
-    message: String,
+    key_share: LocalKeyShare,
+    message_bn: BigInt,
 ) -> Result<()> {
-    //Note: supposed to be an argument parsed in terminal, hardcoded for now
-    let args_parties = vec![1,2];
-    //read the local key shares stored in json file
-    let local_key = tokio::fs::read(local_key_path)
-    .await
-    .context("cannot read local share")?;
-    let local_key = serde_json::from_slice(&local_key).context("parse local share")?;
 
-    let number_of_parties = args_parties.len();
+    //read parameters:
+    let data = fs::read_to_string("params.json")
+        .expect("Unable to read params, make sure config file is present in the same folder ");
+    let params: Params = serde_json::from_str(&data).unwrap();
+    let t = params.threshold.parse::<u16>().unwrap();
+
     let mut signal_client = signal_client
         .start_listening_for_incoming_messages(device_secrets)
         .await
@@ -258,16 +293,12 @@ async fn sign_run(
         .context("join computation")?;
     let incoming = incoming.fuse();
 
-    let signing = OfflineStage::new(my_ind, args_parties, local_key)?;
+    let signing = OfflineStage::new(my_ind, t, key_share, message_bn)?;
     let completed_offline_stage = round_based::AsyncProtocol::new(signing, incoming, outgoing)
         .run()
         .await
         .map_err(|e| anyhow!("protocol execution terminated with error: {}", e))?;
 
-    let (signing, partial_signature) = SignManual::new(
-        BigInt::from_bytes(message.as_bytes()),
-        completed_offline_stage,
-    )?;
     
     /*outgoing
         .send(Msg {
@@ -292,7 +323,7 @@ async fn sign_run(
 
     Ok(())
 }
-
+/*
 async fn verify(args: cli::VerifyArgs) -> Result<()> {
     let public_key =
         hex::decode(args.public_key).context("public key is not valid hex encoded string")?;

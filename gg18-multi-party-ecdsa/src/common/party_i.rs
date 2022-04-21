@@ -41,6 +41,7 @@ use crate::common::Error::{self, InvalidCom, InvalidKey, InvalidSig};
 use crate::common::ErrorType;
 const SECURITY: usize = 256;
 
+
 #[derive(Debug)]
 pub struct Parameters {
     pub threshold: u16,   //t
@@ -142,6 +143,22 @@ pub struct SignatureRecid {
     pub r: Scalar<Secp256k1>,
     pub s: Scalar<Secp256k1>,
     pub recid: u8,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct LocalKeyShare {
+    pub party_keys: Keys,
+    pub shared_keys: SharedKeys,
+    pub party_id: u16,
+    pub vss_scheme_vec: Vec<VerifiableSS<Secp256k1>>,
+    pub paillier_key_vector: Vec<EncryptionKey>,
+    pub y_sum: Point<Secp256k1>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Params {
+    pub parties: String,
+    pub threshold: String,
 }
 
 impl Keys {
@@ -744,3 +761,39 @@ pub fn verify(sig: &SignatureRecid, y: &Point<Secp256k1>, message: &BigInt) -> R
         Err(InvalidSig)
     }
 }
+/*
+pub fn check_sig(
+    r: &Scalar<Secp256k1>,
+    s: &Scalar<Secp256k1>,
+    msg: &BigInt,
+    pk: &Point<Secp256k1>,
+) {
+    println!("Calling Check sig\n");
+    use secp256k1::{verify, Message, PublicKey, PublicKeyFormat, Signature};
+
+    let raw_msg = BigInt::to_bytes(msg);
+    let mut msg: Vec<u8> = Vec::new(); // padding
+    msg.extend(vec![0u8; 32 - raw_msg.len()]);
+    msg.extend(raw_msg.iter());
+
+    let msg = Message::parse_slice(msg.as_slice()).unwrap();
+    let mut raw_pk = pk.to_bytes(false).to_vec();
+    if raw_pk.len() == 64 {
+        raw_pk.insert(0, 4u8);
+    }
+    let pk = PublicKey::parse_slice(&raw_pk, Some(PublicKeyFormat::Full)).unwrap();
+
+    let mut compact: Vec<u8> = Vec::new();
+    let bytes_r = &r.to_bytes().to_vec();
+    compact.extend(vec![0u8; 32 - bytes_r.len()]);
+    compact.extend(bytes_r.iter());
+
+    let bytes_s = &s.to_bytes().to_vec();
+    compact.extend(vec![0u8; 32 - bytes_s.len()]);
+    compact.extend(bytes_s.iter());
+
+    let secp_sig = Signature::parse_slice(compact.as_slice()).unwrap();
+
+    let is_correct = verify(&msg, &secp_sig, &pk);
+    assert!(is_correct);
+}*/
