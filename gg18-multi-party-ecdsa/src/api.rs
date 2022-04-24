@@ -11,15 +11,10 @@ use rand::rngs::OsRng;
 use std::{env, fs};
 use mpc_over_signal::{DeviceStore, Group, ParticipantIdentity, SignalClient};
 
-mod cli;
+use crate::cli as cli;
 use cli::Cmd;
 
-mod common;
-mod dkg;
-mod signing;
-mod utilities;
-
-use dkg::keygen::Keygen;
+use crate::dkg::keygen::Keygen;
 use curv::{
     cryptographic_primitives::{
         secret_sharing::feldman_vss::VerifiableSS,
@@ -31,22 +26,7 @@ use paillier::EncryptionKey;
 use crate::common::party_i::{Keys, SharedKeys, LocalKeyShare, Params};
 use crate::signing::sign::OfflineStage;
 
-#[actix::main]
-async fn main() -> Result<()> {
-    let args: cli::App = StructOpt::from_args();
-    if args.debug {
-        tracing_subscriber::fmt::init();
-    }
-    match args.command {
-        Cmd::Login(args) => login(args).await,
-        Cmd::Me(args) => me(args).await,
-        Cmd::Keygen(args) => keygen(args).await,
-        Cmd::Sign(args) => sign(args).await,
-        //Cmd::Verify(args) => verify(args).await,
-    }
-}
-
-async fn login(args: cli::LoginArgs) -> Result<()> {
+pub async fn login(args: cli::LoginArgs) -> Result<()> {
     let signal_client = signal_client(args.server)
         .await
         .context("constructing signal client")?;
@@ -88,7 +68,7 @@ async fn login(args: cli::LoginArgs) -> Result<()> {
     Ok(())
 }
 
-async fn me(args: cli::MeArgs) -> Result<()> {
+pub async fn me(args: cli::MeArgs) -> Result<()> {
     let device = DeviceStore::from_file(args.secrets.path)
         .await
         .context("read device from file")?;
@@ -105,7 +85,7 @@ async fn me(args: cli::MeArgs) -> Result<()> {
     Ok(())
 }
 
-async fn keygen(args: cli::KeygenArgs) -> Result<()> {
+pub async fn keygen(args: cli::KeygenArgs) -> Result<()> {
     let signal_client = signal_client(args.server)
         .await
         .context("constructing signal client")?;
@@ -207,7 +187,7 @@ async fn keygen_run(
     Ok(())
 }
 
-async fn sign(args: cli::SignArgs) -> Result<()> {
+pub async fn sign(args: cli::SignArgs) -> Result<()> {
     //1) establish the signal client
     let signal_client = signal_client(args.server)
         .await
