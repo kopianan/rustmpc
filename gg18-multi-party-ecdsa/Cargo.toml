@@ -19,7 +19,7 @@ mpc-over-signal = { path = "../mpc-over-signal" }
 
 actix = "0.11.0-beta.2"
 awc = { version = "3.0.0-beta.2", features = ["rustls"] }
-tokio = { version = "1", features = ["fs"] }
+tokio = { version = "1", features = ["fs", "rt-multi-thread"] }
 tracing = "0.1"
 tracing-subscriber = "0.2"
 futures = "0.3"
