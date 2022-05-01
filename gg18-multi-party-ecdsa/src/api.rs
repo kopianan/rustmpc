@@ -27,7 +27,7 @@ use crate::common::party_i::{Keys, SharedKeys, LocalKeyShare, Params};
 use crate::signing::sign::OfflineStage;
 
 
-/*
+
 pub fn login(args: cli::LoginArgs) -> Result<()> {
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
@@ -72,7 +72,7 @@ pub fn login(args: cli::LoginArgs) -> Result<()> {
         Ok(())
     })
 }
-*/
+
 
 pub fn me(args: cli::MeArgs) -> Result<()> {
     let rt = Runtime::new().unwrap();
@@ -93,7 +93,7 @@ pub fn me(args: cli::MeArgs) -> Result<()> {
     Ok(())
     })
 }
-/*
+
 pub fn keygen(args: cli::KeygenArgs) -> Result<()> {
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
@@ -204,4 +204,4 @@ pub fn sign(args: cli::SignArgs) -> Result<()> {
         Ok(())
     })
 }
-*/
+
