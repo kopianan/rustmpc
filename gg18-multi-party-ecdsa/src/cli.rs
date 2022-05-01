@@ -66,7 +66,7 @@ pub struct SignalServer {
     /// Sets root of trust in establishing secure connection to server. By default, original
     /// Signal Server certificate is used.
     #[structopt(long = "signal-cert", display_order = 22)]
-    pub certificate: Option<PathBuf>,
+    pub certificate: Option<String>,
 }
 
 #[derive(StructOpt, Debug)]
@@ -80,7 +80,7 @@ pub struct SecretsFile {
         default_value = "secrets.json",
         display_order = 20
     )]
-    pub path: PathBuf,
+    pub path: String,
 }
 
 #[derive(StructOpt, Debug)]
@@ -127,12 +127,12 @@ pub struct KeygenArgs {
     pub parties: u16,
     /// Path to file containing addresses and public keys of every party of the protocol
     #[structopt(long, display_order = 2)]
-    pub group: PathBuf,
+    pub group: String,
     /// Path to file where to save resulting local party key
     ///
     /// If file already exist, it will be overwritten
     #[structopt(short, long, display_order = 3)]
-    pub output: PathBuf,
+    pub output: String,
 
     #[structopt(flatten)]
     pub secrets: SecretsFile,
@@ -145,11 +145,11 @@ pub struct KeygenArgs {
 pub struct SignArgs {
     /// Path to local secret key file obtained after keygen
     #[structopt(long, display_order = 1)]
-    pub local_key: PathBuf,
+    pub local_key: String,
 
     /// Path to file containing addresses and public keys of every party of the signing protocol
     #[structopt(long, display_order = 2)]
-    pub group: PathBuf,
+    pub group: String,
 
     /// Message to sign
     #[structopt(long, parse(from_str), display_order = 3)]

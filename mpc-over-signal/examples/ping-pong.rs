@@ -23,7 +23,7 @@ struct Args {
     #[structopt(long)]
     destination_identity: String,
     #[structopt(long)]
-    secrets_file: PathBuf,
+    secrets_file: String,
     #[structopt(long)]
     #[structopt(conflicts_with = "pong")]
     ping: bool,

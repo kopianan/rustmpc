@@ -14,7 +14,7 @@ pub struct Args {
     /// A successful login will produce keys file containing sensitive information that should be
     /// kept in secret! File will include: identity secret key, encryption/decryption keys, etc.
     #[structopt(long, default_value = "secrets.json")]
-    pub secrets_file: PathBuf,
+    pub secrets_file: String,
 }
 
 #[actix::main]
