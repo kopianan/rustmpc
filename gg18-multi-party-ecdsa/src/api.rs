@@ -31,7 +31,7 @@ use crate::signing::sign::OfflineStage;
 pub fn login(args: cli::LoginArgs) -> Result<()> {
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
-        let signal_client = signal_client(args.server)
+        let signal_client = signal_client()
             .await
             .context("constructing signal client")?;
 
@@ -62,7 +62,7 @@ pub fn login(args: cli::LoginArgs) -> Result<()> {
 
         let device = device.await.context("retrieving device")??;
         DeviceStore::new(device)
-            .save_no_overwrite(args.secrets.path)
+            .save_no_overwrite("secrets.json")
             .await
             .context("save secrets")?;
 
@@ -77,7 +77,7 @@ pub fn login(args: cli::LoginArgs) -> Result<()> {
 pub fn me(args: cli::MeArgs) -> Result<()> {
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
-        let device = DeviceStore::from_file(args.secrets.path)
+        let device = DeviceStore::from_file("secrets.json")
             .await
             .context("read device from file")?;
         let device = device.read().await;
@@ -97,10 +97,10 @@ pub fn me(args: cli::MeArgs) -> Result<()> {
 pub fn keygen(args: cli::KeygenArgs) -> Result<()> {
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
-        let signal_client = signal_client(args.server)
+        let signal_client = signal_client()
             .await
             .context("constructing signal client")?;
-        let mut device_secrets = DeviceStore::from_file(&args.secrets.path)
+        let mut device_secrets = DeviceStore::from_file("secrets.json")
             .await
             .context("read device from file")?;
         let me = device_secrets.read().await.me();
@@ -134,7 +134,7 @@ pub fn keygen(args: cli::KeygenArgs) -> Result<()> {
         )
         .await;
 
-        if let Err(err) = device_secrets.save(args.secrets.path).await {
+        if let Err(err) = device_secrets.save("secrets.json").await {
             tracing::event!(tracing::Level::ERROR, %err, "Failed to save secrets to file");
         }
 
@@ -146,11 +146,11 @@ pub fn sign(args: cli::SignArgs) -> Result<()> {
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
         //1) establish the signal client
-        let signal_client = signal_client(args.server)
+        let signal_client = signal_client()
             .await
             .context("constructing signal client")?;
         //2) read the MPC device id, address, public key
-        let mut device_secrets = DeviceStore::from_file(&args.secrets.path)
+        let mut device_secrets = DeviceStore::from_file("secrets.json")
             .await
             .context("read device from file")?;
         let me = device_secrets.read().await.me();
@@ -197,7 +197,7 @@ pub fn sign(args: cli::SignArgs) -> Result<()> {
         )
         .await;
 
-        if let Err(err) = device_secrets.save(args.secrets.path).await {
+        if let Err(err) = device_secrets.save("secrets.json").await {
             tracing::event!(tracing::Level::ERROR, %err, "Failed to save secrets to file");
         }
 

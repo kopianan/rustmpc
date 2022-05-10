@@ -18,9 +18,7 @@ use flutter_rust_bridge::*;
 use crate::cli::KeygenArgs;
 use crate::cli::LoginArgs;
 use crate::cli::MeArgs;
-use crate::cli::SecretsFile;
 use crate::cli::SignArgs;
-use crate::cli::SignalServer;
 
 // Section: wire functions
 
@@ -93,29 +91,18 @@ pub struct wire_KeygenArgs {
     parties: u16,
     group: *mut wire_uint_8_list,
     output: *mut wire_uint_8_list,
-    secrets: wire_SecretsFile,
-    server: wire_SignalServer,
 }
 
 #[repr(C)]
 #[derive(Clone)]
 pub struct wire_LoginArgs {
     device_name: *mut wire_uint_8_list,
-    secrets: wire_SecretsFile,
-    server: wire_SignalServer,
 }
 
 #[repr(C)]
 #[derive(Clone)]
 pub struct wire_MeArgs {
     json: bool,
-    secrets: wire_SecretsFile,
-}
-
-#[repr(C)]
-#[derive(Clone)]
-pub struct wire_SecretsFile {
-    path: *mut wire_uint_8_list,
 }
 
 #[repr(C)]
@@ -124,15 +111,6 @@ pub struct wire_SignArgs {
     local_key: *mut wire_uint_8_list,
     group: *mut wire_uint_8_list,
     digits: *mut wire_uint_8_list,
-    secrets: wire_SecretsFile,
-    server: wire_SignalServer,
-}
-
-#[repr(C)]
-#[derive(Clone)]
-pub struct wire_SignalServer {
-    host: *mut wire_uint_8_list,
-    certificate: *mut wire_uint_8_list,
 }
 
 #[repr(C)]
@@ -244,8 +222,6 @@ impl Wire2Api<KeygenArgs> for wire_KeygenArgs {
             parties: self.parties.wire2api(),
             group: self.group.wire2api(),
             output: self.output.wire2api(),
-            secrets: self.secrets.wire2api(),
-            server: self.server.wire2api(),
         }
     }
 }
@@ -254,8 +230,6 @@ impl Wire2Api<LoginArgs> for wire_LoginArgs {
     fn wire2api(self) -> LoginArgs {
         LoginArgs {
             device_name: self.device_name.wire2api(),
-            secrets: self.secrets.wire2api(),
-            server: self.server.wire2api(),
         }
     }
 }
@@ -264,15 +238,6 @@ impl Wire2Api<MeArgs> for wire_MeArgs {
     fn wire2api(self) -> MeArgs {
         MeArgs {
             json: self.json.wire2api(),
-            secrets: self.secrets.wire2api(),
-        }
-    }
-}
-
-impl Wire2Api<SecretsFile> for wire_SecretsFile {
-    fn wire2api(self) -> SecretsFile {
-        SecretsFile {
-            path: self.path.wire2api(),
         }
     }
 }
@@ -283,17 +248,6 @@ impl Wire2Api<SignArgs> for wire_SignArgs {
             local_key: self.local_key.wire2api(),
             group: self.group.wire2api(),
             digits: self.digits.wire2api(),
-            secrets: self.secrets.wire2api(),
-            server: self.server.wire2api(),
-        }
-    }
-}
-
-impl Wire2Api<SignalServer> for wire_SignalServer {
-    fn wire2api(self) -> SignalServer {
-        SignalServer {
-            host: self.host.wire2api(),
-            certificate: self.certificate.wire2api(),
         }
     }
 }
@@ -338,8 +292,6 @@ impl NewWithNullPtr for wire_KeygenArgs {
             parties: Default::default(),
             group: core::ptr::null_mut(),
             output: core::ptr::null_mut(),
-            secrets: Default::default(),
-            server: Default::default(),
         }
     }
 }
@@ -348,8 +300,6 @@ impl NewWithNullPtr for wire_LoginArgs {
     fn new_with_null_ptr() -> Self {
         Self {
             device_name: core::ptr::null_mut(),
-            secrets: Default::default(),
-            server: Default::default(),
         }
     }
 }
@@ -358,15 +308,6 @@ impl NewWithNullPtr for wire_MeArgs {
     fn new_with_null_ptr() -> Self {
         Self {
             json: Default::default(),
-            secrets: Default::default(),
-        }
-    }
-}
-
-impl NewWithNullPtr for wire_SecretsFile {
-    fn new_with_null_ptr() -> Self {
-        Self {
-            path: core::ptr::null_mut(),
         }
     }
 }
@@ -377,17 +318,6 @@ impl NewWithNullPtr for wire_SignArgs {
             local_key: core::ptr::null_mut(),
             group: core::ptr::null_mut(),
             digits: core::ptr::null_mut(),
-            secrets: Default::default(),
-            server: Default::default(),
-        }
-    }
-}
-
-impl NewWithNullPtr for wire_SignalServer {
-    fn new_with_null_ptr() -> Self {
-        Self {
-            host: core::ptr::null_mut(),
-            certificate: core::ptr::null_mut(),
         }
     }
 }

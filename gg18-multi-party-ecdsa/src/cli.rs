@@ -98,10 +98,6 @@ pub struct LoginArgs {
     /// It will be displayed in "Linked Devices" in Signal app on your phone.
     #[structopt(long, default_value = "MPC-over-Signal device", display_order = 1)]
     pub device_name: String,
-    #[structopt(flatten)]
-    pub secrets: SecretsFile,
-    #[structopt(flatten)]
-    pub server: SignalServer,
 }
 
 #[derive(StructOpt, Debug)]
@@ -110,8 +106,6 @@ pub struct MeArgs {
     /// Prints your visit card in json format
     #[structopt(long)]
     pub json: bool,
-    #[structopt(flatten)]
-    pub secrets: SecretsFile,
 }
 
 #[derive(StructOpt, Debug)]
@@ -133,11 +127,6 @@ pub struct KeygenArgs {
     /// If file already exist, it will be overwritten
     #[structopt(short, long, display_order = 3)]
     pub output: String,
-
-    #[structopt(flatten)]
-    pub secrets: SecretsFile,
-    #[structopt(flatten)]
-    pub server: SignalServer,
 }
 
 #[derive(StructOpt, Debug)]
@@ -154,11 +143,6 @@ pub struct SignArgs {
     /// Message to sign
     #[structopt(long, parse(from_str), display_order = 3)]
     pub digits: String,
-
-    #[structopt(flatten)]
-    pub secrets: SecretsFile,
-    #[structopt(flatten)]
-    pub server: SignalServer,
 }
 
 type Bytes = Vec<u8>;
@@ -307,7 +291,8 @@ pub async fn verify(args: cli::VerifyArgs) -> Result<()> {
     Ok(())
 }
 */
-pub async fn signal_client(server: SignalServer) -> Result<SignalClient> {
+pub async fn signal_client() -> Result<SignalClient> {
+    let server = SignalServer::from_args();
     let mut builder = SignalClient::builder()?;
     builder.set_server_host(server.host)?;
 
