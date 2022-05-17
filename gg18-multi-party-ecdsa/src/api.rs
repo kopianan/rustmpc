@@ -26,10 +26,8 @@ use crate::common::party_i::{Keys, SharedKeys, LocalKeyShare};
 const THRESHOLD:u16 = 1;
 const PARTIES:u16 = 3;
 
-pub fn keygen(secrets_byte_vec: Vec<u8>, group_byte_vec: Vec<u8>) -> Result<()> {
+pub fn keygen(secrets_byte_vec: Vec<u8>, group_byte_vec: Vec<u8>) -> Result<String> {
     let rt = Runtime::new().unwrap();
-    let MPC_threshold = 1;
-    let mpc_parties = 3;
 
     rt.block_on(async {
         let signal_client = signal_client()
@@ -57,7 +55,7 @@ pub fn keygen(secrets_byte_vec: Vec<u8>, group_byte_vec: Vec<u8>) -> Result<()> 
             "threshold value is more than number of parties"
         );
 
-        keygen_run(
+        let keygen_json = keygen_run(
             signal_client,
             device_secrets.clone(),
             group,
@@ -68,11 +66,7 @@ pub fn keygen(secrets_byte_vec: Vec<u8>, group_byte_vec: Vec<u8>) -> Result<()> 
         )
         .await;
 
-        if let Err(err) = device_secrets.save("secrets.json").await {
-            tracing::event!(tracing::Level::ERROR, %err, "Failed to save secrets to file");
-        }
-
-        Ok(())
+        keygen_json
     })
 }
 
