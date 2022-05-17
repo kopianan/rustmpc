@@ -17,7 +17,7 @@ use sha2::Sha256;
 use thiserror::Error;
 
 use crate::common::party_i::{
-    KeyGenBroadcastMessage1, KeyGenDecommitMessage1, Keys, Parameters, SharedKeys
+    KeyGenBroadcastMessage1, KeyGenDecommitMessage1,
 };
 
 use private::InternalError;

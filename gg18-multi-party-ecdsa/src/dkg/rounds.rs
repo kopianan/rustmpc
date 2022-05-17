@@ -10,7 +10,7 @@ use crate::common::party_i::{
     KeyGenBroadcastMessage1, KeyGenDecommitMessage1, Keys, Parameters, SharedKeys
 };
 
-use crate::common::{self, ErrorType};
+use crate::common::{ ErrorType};
 use sha2::Sha256;
 use serde::{Deserialize, Serialize};
 

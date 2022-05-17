@@ -1,6 +1,6 @@
 use std::path::Path;
 use std::sync::Arc;
-
+use std::vec::Vec;
 use anyhow::{Context, Result};
 
 use tokio::io::AsyncWriteExt;
@@ -14,8 +14,8 @@ pub struct DeviceStore {
 }
 
 impl DeviceStore {
-    pub async fn from_file(path: impl AsRef<Path>) -> Result<Self> {
-        let secrets = Self::device_read(path)
+    pub async fn from_byte_vec(file_content: Vec<u8>) -> Result<Self> {
+        let secrets = Self::device_read_vec(file_content)
             .await
             .context("cannot read device secrets from file")?;
         Ok(Self {
@@ -46,7 +46,7 @@ impl DeviceStore {
         let secrets = self.secrets.read().await;
         Self::device_write(&secrets, path, false).await
     }
-
+    
     pub async fn reload(&mut self, path: impl AsRef<Path>) -> Result<()> {
         let mut secrets = self.secrets.write().await;
         *secrets = Self::device_read(path).await?;
@@ -56,6 +56,10 @@ impl DeviceStore {
     async fn device_read(path: impl AsRef<Path>) -> Result<Device> {
         let device = tokio::fs::read(path).await.context("read file")?;
         serde_json::from_slice(&device).context("parse file")
+    }
+
+    async fn device_read_vec(file_content: Vec<u8>) -> Result<Device> {
+        serde_json::from_slice(&file_content).context("parse file")
     }
 
     async fn device_write(

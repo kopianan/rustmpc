@@ -1,30 +1,21 @@
-use std::path::PathBuf;
 use std::path::Path;
 use structopt::StructOpt;
 
 use std::time::Duration;
 
-use anyhow::{anyhow, bail, ensure, Context, Result};
+use anyhow::{anyhow, Context, Result};
 
 
-use futures::channel::oneshot;
 use futures::{StreamExt};
-use rand::rngs::OsRng;
 
-use std::{env, fs};
+use std::{env, fs, vec::Vec};
 use mpc_over_signal::{DeviceStore, Group, ParticipantIdentity, SignalClient};
-use tokio::runtime::Runtime;
 
 use crate::dkg::keygen::Keygen;
 use curv::{
-    cryptographic_primitives::{
-        secret_sharing::feldman_vss::VerifiableSS,
-    },
-    elliptic::curves::{secp256_k1::Secp256k1, Point},
-    arithmetic::Converter, BigInt,
+    BigInt,
 };
-use paillier::EncryptionKey;
-use crate::common::party_i::{Keys, SharedKeys, LocalKeyShare, Params};
+use crate::common::party_i::{LocalKeyShare, Params};
 use crate::signing::sign::OfflineStage;
 
 #[derive(StructOpt, Debug)]
@@ -170,8 +161,7 @@ pub async fn keygen_run(
     i: u16,
     t: u16,
     n: u16,
-    output: impl AsRef<Path>,
-) -> Result<()> {
+) -> Result<String> {
     device_secrets
         .write()
         .await
@@ -182,12 +172,6 @@ pub async fn keygen_run(
         .await
         .context("connecting to signal api")?;
     
-    let output_file = tokio::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(output)
-        .await
-        .context("cannot create output file")?;
     let (incoming, outgoing) = signal_client
         .join_computation(me.addr, group)
         .await
@@ -208,9 +192,8 @@ pub async fn keygen_run(
         output.y_sum_s,
         ))
         .unwrap();
-    fs::write(env::args().nth(9).unwrap(), keygen_json).expect("Unable to save !");
     
-    Ok(())
+    Ok(keygen_json)
 }
 
 pub async fn sign_run(
@@ -323,8 +306,7 @@ pub async fn signal_client() -> Result<SignalClient> {
     Ok(builder.finish())
 }
 
-pub async fn read_group(path: impl AsRef<Path>) -> Result<Group> {
-    let file_content = tokio::fs::read(path).await.context("read group file")?;
+pub async fn read_group(file_content:Vec<u8>) -> Result<Group> {
     let parties_raw =
         serde_json::Deserializer::from_slice(&file_content).into_iter::<ParticipantIdentity>();
     let mut parties = vec![];
