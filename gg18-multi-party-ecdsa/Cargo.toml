@@ -1,13 +1,8 @@
 [package]
-name = "gg18_mpc_ecdsa"
+name = "gg18-multi-party-ecdsa"
 version = "0.1.0"
 authors = ["Denis <dsurv@yandex.ru>"]
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-[lib]
-name = "gg18_mpc_ecdsa"
-crate-type = ["lib", "staticlib", "cdylib"]
 
 [features]
 default = ["curv-kzen/num-bigint"]

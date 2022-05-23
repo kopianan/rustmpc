@@ -3,4 +3,5 @@
 members = [
     "mpc-over-signal",
     "gg18-multi-party-ecdsa",
+    "gg18-multi-party-ecdsa-ffi",
 ]

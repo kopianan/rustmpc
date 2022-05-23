@@ -1,4 +1,4 @@
-use std::path::Path;
+
 use structopt::StructOpt;
 
 use std::time::Duration;
@@ -8,7 +8,7 @@ use anyhow::{anyhow, Context, Result};
 
 use futures::{StreamExt};
 
-use std::{env, fs, vec::Vec};
+use std::{fs, vec::Vec};
 use mpc_over_signal::{DeviceStore, Group, ParticipantIdentity, SignalClient};
 
 use crate::dkg::keygen::Keygen;
@@ -274,36 +274,42 @@ pub async fn verify(args: cli::VerifyArgs) -> Result<()> {
     Ok(())
 }
 */
-pub async fn signal_client() -> Result<SignalClient> {
+pub async fn getSignalServerCert() -> Result<Vec<u8>> {
     let server = SignalServer::from_args();
     let mut builder = SignalClient::builder()?;
     builder.set_server_host(server.host)?;
 
     if let Some(cert) = server.certificate {
-        let cert = tokio::fs::read(cert).await.context("read certificate")?;
-
-        let mut root_certs = rustls::RootCertStore::empty();
-        root_certs
-            .add_pem_file(&mut cert.as_slice())
-            .map_err(|()| anyhow!("parse certificate"))?;
-
-        let mut tls_config = rustls::ClientConfig::new();
-        tls_config.root_store = root_certs;
-
-        let client = awc::Client::builder()
-            .connector(
-                awc::Connector::new()
-                    .rustls(tls_config.into())
-                    .timeout(Duration::from_secs(30))
-                    .finish(),
-            )
-            .disable_timeout()
-            .finish();
-
-        builder.set_http_client(client);
+        Ok(tokio::fs::read(cert).await.context("read certificate")?)
     }
+    else {
+        Err(anyhow!("Missing signal certificate"))
+    }
+    
+}
 
-    Ok(builder.finish())
+pub fn signal_client(cert: Vec<u8>) -> SignalClient{
+    let server = SignalServer::from_args();
+    let mut builder = SignalClient::builder().unwrap();
+    builder.set_server_host(server.host);
+    let mut root_certs = rustls::RootCertStore::empty();
+    root_certs
+        .add_pem_file(&mut cert.as_slice())
+        .map_err(|()| anyhow!("parse certificate"));
+    let mut tls_config = rustls::ClientConfig::new();
+    tls_config.root_store = root_certs;
+    let client = awc::Client::builder()
+        .connector(
+            awc::Connector::new()
+                .rustls(tls_config.into())
+                .timeout(Duration::from_secs(30))
+                .finish(),
+        )
+        .disable_timeout()
+        .finish();
+    builder.set_http_client(client);
+
+    builder.finish()
 }
 
 pub async fn read_group(file_content:Vec<u8>) -> Result<Group> {

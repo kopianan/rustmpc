@@ -1,7 +1,5 @@
 #![allow(non_snake_case)]
 
-use std::convert::TryFrom;
-
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -188,7 +186,7 @@ impl Round2 {
     where
         O: Push<Msg<(GammaI, WI)>>,
     {
-        let (m_a_vec, mut bc_vec): (Vec<_>, Vec<_>) = input
+        let (m_a_vec, bc_vec): (Vec<_>, Vec<_>) = input
             .into_vec()
             .into_iter()
             .unzip();
@@ -455,7 +453,7 @@ impl Round5 {
         let decom_vec: Vec<_> = decommit_round1.into_vec();
         //println!("decom_vec = {:?}\n", decom_vec);//erwin_debug
         let decomm_i = self.phase1_decom.clone();
-        let mut bc_vec_self = self.bc_vec.clone();
+        let bc_vec_self = self.bc_vec.clone();
 
         let b_proof_vec = (0..self.m_b_gamma_rec_vec.len())
             .map(|i| &self.m_b_gamma_rec_vec[i].b_proof)
