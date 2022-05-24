@@ -15,6 +15,7 @@ fn main() {
         .generate()
         .expect("Unable to generate bindings")
         .write_to_file("binding.h");
+        
     let config = DynamicLibraryConfig {
         ios: DynamicLibraryCreationMode::Executable.into(),
         android: DynamicLibraryCreationMode::open("libscrap_ffi.so").into(),
@@ -33,6 +34,6 @@ fn main() {
     // write the bindings to your dart package
     // and start using it to write your own high level abstraction.
     bindings
-        .write_to_file("../../packages/scrap_ffi/lib/ffi.dart")
+        .write_to_file("/Users/anan/Documents/CoinBit/rustmpc/result/ffi.dart")
         .unwrap();
-}
+}   
