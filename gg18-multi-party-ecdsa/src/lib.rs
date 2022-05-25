@@ -55,29 +55,19 @@ pub struct SecretsFile {
 const THRESHOLD:u16 = 1;
 const PARTIES:u16 = 3;
 
-pub async fn getSignalServerCert() -> Result<Vec<u8>> {
-    let server = SignalServer::from_args();
-    if let Some(cert) = server.certificate {
-        Ok(tokio::fs::read(cert).await.context("read certificate")?)
-    }
-    else {
-        Err(anyhow!("Missing signal certificate"))
-    }
+pub async fn keygen(secrets_byte_vec: Vec<u8>, group_byte_vec: Vec<u8>) -> Result<String> {
     
-}
-
-pub async fn keygen(signal_server_cert: Vec<u8>, secrets_byte_vec: Vec<u8>, group_byte_vec: Vec<u8>) -> Result<String> {
-    
-    let signal_client = signal_client(signal_server_cert);
     let device_secrets = DeviceStore::from_byte_vec(secrets_byte_vec)
         .await
         .context("read device from file")?;
     let me = device_secrets.read().await.me();
-    let group = read_group(group_byte_vec).await.context("read group")?;
+
+    let group = read_group(group_byte_vec).context("read group")?;
     let my_ind = match group.party_index(&me.addr) {
         Some(i) => i,
         None => bail!("group must contain this party too"),
     };
+    
     ensure!(
         group.parties_count() == PARTIES,
         "protocol expected to have {} parties (from `-n` option), but group file contains {} parties",
@@ -88,8 +78,8 @@ pub async fn keygen(signal_server_cert: Vec<u8>, secrets_byte_vec: Vec<u8>, grou
         PARTIES >= THRESHOLD,
         "threshold value is more than number of parties"
     );
+    
     let keygen_json = keygen_run(
-        signal_client,
         device_secrets.clone(),
         group,
         me,

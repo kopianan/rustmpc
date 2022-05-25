@@ -154,7 +154,6 @@ pub struct VerifyArgs {
 
 #[allow(clippy::too_many_arguments)]
 pub async fn keygen_run(
-    signal_client: SignalClient,
     device_secrets: DeviceStore,
     group: Group,
     me: ParticipantIdentity,
@@ -167,7 +166,9 @@ pub async fn keygen_run(
         .await
         .trust_to(&group)
         .context("adding trust to the group")?;
-    let mut signal_client = signal_client
+    
+    let mut signal_client = signal_client()
+        .unwrap()
         .start_listening_for_incoming_messages(device_secrets)
         .await
         .context("connecting to signal api")?;
@@ -274,45 +275,14 @@ pub async fn verify(args: cli::VerifyArgs) -> Result<()> {
     Ok(())
 }
 */
-pub async fn getSignalServerCert() -> Result<Vec<u8>> {
+pub fn signal_client() -> Result<SignalClient> {
     let server = SignalServer::from_args();
     let mut builder = SignalClient::builder()?;
     builder.set_server_host(server.host)?;
-
-    if let Some(cert) = server.certificate {
-        Ok(tokio::fs::read(cert).await.context("read certificate")?)
-    }
-    else {
-        Err(anyhow!("Missing signal certificate"))
-    }
-    
+    Ok(builder.finish())
 }
 
-pub fn signal_client(cert: Vec<u8>) -> SignalClient{
-    let server = SignalServer::from_args();
-    let mut builder = SignalClient::builder().unwrap();
-    builder.set_server_host(server.host);
-    let mut root_certs = rustls::RootCertStore::empty();
-    root_certs
-        .add_pem_file(&mut cert.as_slice())
-        .map_err(|()| anyhow!("parse certificate"));
-    let mut tls_config = rustls::ClientConfig::new();
-    tls_config.root_store = root_certs;
-    let client = awc::Client::builder()
-        .connector(
-            awc::Connector::new()
-                .rustls(tls_config.into())
-                .timeout(Duration::from_secs(30))
-                .finish(),
-        )
-        .disable_timeout()
-        .finish();
-    builder.set_http_client(client);
-
-    builder.finish()
-}
-
-pub async fn read_group(file_content:Vec<u8>) -> Result<Group> {
+pub fn read_group(file_content:Vec<u8>) -> Result<Group> {
     let parties_raw =
         serde_json::Deserializer::from_slice(&file_content).into_iter::<ParticipantIdentity>();
     let mut parties = vec![];
