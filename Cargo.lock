@@ -287,6 +287,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-ffi"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c7e73758d044aab514155e8888ed142d408498712c6f82f24e3ee0650d5943b0"
+
+[[package]]
 name = "async-sse"
 version = "5.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1495,6 +1501,7 @@ name = "gg18_mpc_ecdsa_ffi"
 version = "0.1.0"
 dependencies = [
  "allo-isolate",
+ "async-ffi",
  "cbindgen",
  "dart-bindgen",
  "ffi_helpers",
