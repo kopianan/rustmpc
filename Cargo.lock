@@ -1451,10 +1451,13 @@ name = "gg18_mpc_ecdsa_ffi"
 version = "0.1.0"
 dependencies = [
  "allo-isolate",
+ "anyhow",
  "async-ffi",
  "cbindgen",
  "dart-bindgen",
  "gg18-multi-party-ecdsa",
+ "mpc-over-signal",
+ "structopt",
 ]
 
 [[package]]
