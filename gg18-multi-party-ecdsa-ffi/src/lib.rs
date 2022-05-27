@@ -31,20 +31,13 @@ pub struct wire_uint_8_list {
     len: i32,
 }
 
+
 // Section: wrapper structs
 
 // Section: static checks
 
 // Section: allocate functions
-
-#[no_mangle]
-pub extern "C" fn new_uint_8_list(len: i32) -> *mut wire_uint_8_list {
-    let ans = wire_uint_8_list {
-        ptr: support::new_leak_vec_ptr(Default::default(), len),
-        len,
-    };
-    support::new_leak_box_ptr(ans)
-}
+ 
 
 // Section: impl Wire2Api
 

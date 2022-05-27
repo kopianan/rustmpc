@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"path": "../../cb_rust_mpc"
+		},
+		{
+			"path": ".."
+		}
+	],
+	"settings": {}
+}
