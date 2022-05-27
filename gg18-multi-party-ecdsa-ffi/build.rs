@@ -18,7 +18,7 @@ fn main() {
         
     let config = DynamicLibraryConfig {
         ios: DynamicLibraryCreationMode::Executable.into(),
-        android: DynamicLibraryCreationMode::open("gg18_mpc_ecdsa_ffi.so").into(),
+        android: DynamicLibraryCreationMode::open("libgg18_mpc_ecdsa_ffi.so").into(),
         ..Default::default()
     };
     // load the c header file, with config and lib name

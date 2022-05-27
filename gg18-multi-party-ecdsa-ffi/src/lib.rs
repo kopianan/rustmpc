@@ -80,38 +80,38 @@ pub extern "C" fn wire_keygen(
         */
         let isolate = Isolate::new(port_);
         isolate.post("Reading device_secrets . . .");
-        let device_secrets = DeviceStore::from_byte_vec(api_secrets_byte_vec)
-            .await
-            .context("read device from file")?;
-        isolate.post("device_secrets read completed. start reading my public key . .");
-        let me = device_secrets.read().await.me();
-        let group = read_group(api_group_byte_vec).context("read group")?;
-        let result: String;
-        let my_ind = match group.party_index(&me.addr) {
-            Some(i) => {isolate.post("my index is found")},
-            None => {isolate.post("group must contain this party too")},
-        };
+        // let device_secrets = DeviceStore::from_byte_vec(api_secrets_byte_vec)
+        //     .await
+        //     .context("read device from file")?;
+        // isolate.post("device_secrets read completed. start reading my public key . .");
+        // let me = device_secrets.read().await.me();
+        // let group = read_group(api_group_byte_vec).context("read group")?;
+        // let result: String;
+        // let my_ind = match group.party_index(&me.addr) {
+        //     Some(i) => {isolate.post("my index is found")},
+        //     None => {isolate.post("group must contain this party too")},
+        // };
 
-        if group.parties_count() != PARTIES 
-        {
-            isolate.post("group.parties_count() != PARTIES");
-        }
-        isolate.post("keygen_run ..");
+        // if group.parties_count() != PARTIES 
+        // {
+        //     isolate.post("group.parties_count() != PARTIES");
+        // }
+        // isolate.post("keygen_run ..");
 
-        let my_ind = match group.party_index(&me.addr) {
-            Some(i) => i,
-            None => bail!("group must contain this party too"),
-        };
-        let keygen_json = keygen_run(
-            device_secrets.clone(),
-            group,
-            me,
-            my_ind,
-            THRESHOLD,
-            PARTIES,
-        )
-        .await;
-        isolate.post(keygen_json);
-        Ok(())
+        // let my_ind = match group.party_index(&me.addr) {
+        //     Some(i) => i,
+        //     None => bail!("group must contain this party too"),
+        // };
+        // let keygen_json = keygen_run(
+        //     device_secrets.clone(),
+        //     group,
+        //     me,
+        //     my_ind,
+        //     THRESHOLD,
+        //     PARTIES,
+        // )
+        // .await;
+        // isolate.post(keygen_json);
+        // Ok(())
     }.into_local_ffi();
 }
