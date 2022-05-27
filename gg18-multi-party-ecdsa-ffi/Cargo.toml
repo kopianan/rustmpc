@@ -6,7 +6,7 @@ edition = "2018"
 
 [lib]
 name = "gg18_mpc_ecdsa_ffi"
-crate-type = ["cdylib"]
+crate-type = ["rlib", "staticlib", "dylib"]
 
 [dependencies]
 gg18-multi-party-ecdsa = { path = "../gg18-multi-party-ecdsa" }
