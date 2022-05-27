@@ -9,7 +9,10 @@ name = "gg18_mpc_ecdsa_ffi"
 crate-type = ["cdylib"]
 
 [dependencies]
+anyhow = "1"
+structopt = "0.3"
 gg18-multi-party-ecdsa = { path = "../gg18-multi-party-ecdsa" }
+mpc-over-signal = { path = "../mpc-over-signal" }
 allo-isolate = "0.1.6"
 async-ffi = "0.4.0"
 
