@@ -19,11 +19,11 @@ use cli::Cmd;
 
 mod common;
 mod dkg;
-mod signing;
+mod presigning;
 mod utilities;
 
 use dkg::keygen::Keygen;
-use signing::sign::{
+use presigning::presign::{
     OfflineStage, SignManual,
 };
 
@@ -37,8 +37,8 @@ async fn main() -> Result<()> {
         Cmd::Login(args) => login(args).await,
         Cmd::Me(args) => me(args).await,
         Cmd::Keygen(args) => keygen(args).await,
+        Cmd::Presign(args) => presign(args).await,
         Cmd::Sign(args) => sign(args).await,
-        //Cmd::Verify(args) => verify(args).await,
     }
 }
 
@@ -196,11 +196,96 @@ async fn keygen_run(
     Ok(())
 }
 
-async fn sign(args: cli::SignArgs) -> Result<()> {
+async fn presign(args: cli::PresignArgs) -> Result<()> {
     //establish the signal client
     let signal_client = signal_client(args.server)
         .await
         .context("constructing signal client")?;
+    //read the MPC device id, address, public key
+    let mut device_secrets = DeviceStore::from_file(&args.secrets.path)
+        .await
+        .context("read device from file")?;
+    let me = device_secrets.read().await.me();
+    //read the group.json file and ensure this device is included
+    let group = read_group(args.group).await.context("read group")?;
+    let my_ind = match group.party_index(&me.addr) {
+        Some(i) => i,
+        None => bail!("group must contain this party too"),
+    };
+    
+    presign_run(
+        signal_client,
+        device_secrets.clone(),
+        group,
+        me,
+        my_ind,
+        args.local_key,
+        args.output,
+    )
+    .await;
+
+    if let Err(err) = device_secrets.save(args.secrets.path).await {
+        tracing::event!(tracing::Level::ERROR, %err, "Failed to save secrets to file");
+    }
+
+    Ok(())
+}
+
+async fn presign_run(
+    signal_client: SignalClient,
+    device_secrets: DeviceStore,
+    group: Group,
+    me: ParticipantIdentity,
+    my_ind: u16,
+    local_key_path: std::path::PathBuf,
+    output: impl AsRef<Path>,
+) -> Result<()> {
+    //Note: supposed to be an argument parsed in terminal, hardcoded for now
+    let args_parties = vec![1,2];
+    //read the local key shares stored in json file
+    let local_key = tokio::fs::read(local_key_path)
+    .await
+    .context("cannot read local share")?;
+    let local_key = serde_json::from_slice(&local_key).context("parse local share")?;
+
+    let number_of_parties = args_parties.len();
+    
+    let mut signal_client = signal_client
+        .start_listening_for_incoming_messages(device_secrets)
+        .await
+        .context("connecting to signal api")?;
+    let (incoming, outgoing) = signal_client
+        .join_computation(me.addr.clone(), group.clone())
+        .await
+        .context("join computation")?;
+    let incoming = incoming.fuse();
+
+    let signing = OfflineStage::new(my_ind, args_parties, local_key)?;
+    let completed_offline_stage = round_based::AsyncProtocol::new(signing, incoming, outgoing)
+        .run()
+        .await
+        .map_err(|e| anyhow!("protocol execution terminated with error: {}", e))?;
+
+    // save the presign signature into json file
+    let mut output_file = tokio::fs::OpenOptions::new()
+    .write(true)
+    .create_new(true)
+    .open(output)
+    .await
+    .context("cannot create output file")?;
+
+    let ser_output = serde_json::to_vec_pretty(&completed_offline_stage).context("serialize output")?;
+    tokio::io::copy(&mut ser_output.as_slice(), &mut output_file)
+        .await
+        .context("save output to file")?;
+
+    Ok(())
+}
+async fn sign(args: cli::SignArgs) -> Result<()> {
+    //establish the signal client
+    let signal_client = signal_client(args.server)
+    .await
+    .context("constructing signal client")?;
     //read the MPC device id, address, public key
     let mut device_secrets = DeviceStore::from_file(&args.secrets.path)
         .await
@@ -219,7 +304,7 @@ async fn sign(args: cli::SignArgs) -> Result<()> {
         group,
         me,
         my_ind,
-        args.local_key,
+        args.presign_share,
         args.digits,
     )
     .await;
@@ -230,67 +315,59 @@ async fn sign(args: cli::SignArgs) -> Result<()> {
 
     Ok(())
 }
-
-async fn sign_run(
+async fn sign_run (
     signal_client: SignalClient,
     device_secrets: DeviceStore,
     group: Group,
     me: ParticipantIdentity,
     my_ind: u16,
-    local_key_path: std::path::PathBuf,
+    presign_share_path: std::path::PathBuf,
     message: String,
 ) -> Result<()> {
+    //MPC Signing Stage starts here
     //Note: supposed to be an argument parsed in terminal, hardcoded for now
     let args_parties = vec![1,2];
-    //read the local key shares stored in json file
-    let local_key = tokio::fs::read(local_key_path)
-    .await
-    .context("cannot read local share")?;
-    let local_key = serde_json::from_slice(&local_key).context("parse local share")?;
-
+    //read the local presign shares stored in json file
+    let presign_share = tokio::fs::read(presign_share_path).await.context("cannot read presign share")?;
+    let completed_offline_stage = serde_json::from_slice(&presign_share).context("parse local presign share")?;
     let number_of_parties = args_parties.len();
+    
     let mut signal_client = signal_client
         .start_listening_for_incoming_messages(device_secrets)
         .await
         .context("connecting to signal api")?;
-    let (incoming, outgoing) = signal_client
-        .join_computation(me.addr, group)
+    let (incoming, mut outgoing) = signal_client
+        .join_computation(me.addr.clone(), group.clone())
         .await
         .context("join computation")?;
     let incoming = incoming.fuse();
-
-    let signing = OfflineStage::new(my_ind, args_parties, local_key)?;
-    let completed_offline_stage = round_based::AsyncProtocol::new(signing, incoming, outgoing)
-        .run()
-        .await
-        .map_err(|e| anyhow!("protocol execution terminated with error: {}", e))?;
 
     let (signing, partial_signature) = SignManual::new(
         BigInt::from_bytes(message.as_bytes()),
         completed_offline_stage,
     )?;
     
-    /*outgoing
+    outgoing
         .send(Msg {
             sender: my_ind,
             receiver: None,
             body: partial_signature,
         })
         .await?;
-
+    
     let partial_signatures: Vec<_> = incoming
         .take(number_of_parties - 1)
         .map_ok(|msg| msg.body)
         .try_collect()
         .await?;
-
+    
     let signature = signing
         .complete(&partial_signatures)
         .context("online stage failed")?;
-    let signature = serde_json::to_string(&signature).context("serialize signature")?;
-    println!("{}", signature);*/
     
-
+    let signature = serde_json::to_string(&signature).context("serialize signature")?;
+    println!("{}", signature); 
+    
     Ok(())
 }
 /*

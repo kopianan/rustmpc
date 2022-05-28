@@ -1349,7 +1349,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "gg18-mpc-ecdsa"
+name = "gg20-mpc-ecdsa"
 version = "0.1.0"
 dependencies = [
  "actix",
@@ -1369,7 +1369,6 @@ dependencies = [
  "rand 0.7.3",
  "round-based",
  "rustls",
- "secp256k1 0.20.3",
  "serde",
  "serde_json",
  "sha2 0.9.3",

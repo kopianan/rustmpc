@@ -20,9 +20,9 @@ pub enum Cmd {
     #[structopt(display_order = 3)]
     Keygen(KeygenArgs),
     #[structopt(display_order = 4)]
+    Presign(PresignArgs),
+    #[structopt(display_order = 5)]
     Sign(SignArgs),
-    //#[structopt(display_order = 5)]
-    //Verify(VerifyArgs),
 }
 
 #[derive(StructOpt, Debug)]
@@ -117,10 +117,32 @@ pub struct KeygenArgs {
 
 #[derive(StructOpt, Debug)]
 /// Threshold signing
-pub struct SignArgs {
+pub struct PresignArgs {
     /// Path to local secret key file obtained after keygen
     #[structopt(long, display_order = 1)]
     pub local_key: PathBuf,
+
+    /// Path to file containing addresses and public keys of every party of the signing protocol
+    #[structopt(long, display_order = 2)]
+    pub group: PathBuf,
+
+    /// Path to file where to save offline/presign signature
+    ///
+    /// If file already exist, it will be overwritten
+    #[structopt(short, long, display_order = 3)]
+    pub output: PathBuf,
+
+    #[structopt(flatten)]
+    pub secrets: SecretsFile,
+    #[structopt(flatten)]
+    pub server: SignalServer,
+}
+
+#[derive(StructOpt, Debug)]
+pub struct SignArgs {
+    /// Path to local secret key file obtained after keygen
+    #[structopt(long, display_order = 1)]
+    pub presign_share: PathBuf,
 
     /// Path to file containing addresses and public keys of every party of the signing protocol
     #[structopt(long, display_order = 2)]
