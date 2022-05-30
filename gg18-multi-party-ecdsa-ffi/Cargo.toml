@@ -9,13 +9,14 @@ name = "gg18_mpc_ecdsa_ffi"
 crate-type = ["rlib", "staticlib", "dylib"]
 
 [dependencies]
+anyhow = "1"
+structopt = "0.3"
 gg18-multi-party-ecdsa = { path = "../gg18-multi-party-ecdsa" }
-tokio = { version = "0.2", features = ["rt-threaded", "blocking"] }
-ffi_helpers = "0.2"
+mpc-over-signal = { path = "../mpc-over-signal" }
 allo-isolate = "0.1.6"
-lazy_static = "1.4"
-flutter_rust_bridge = "1"
 async-ffi = "0.4.0"
+lazy_static = "1.4"
+tokio = { version = "0.2", features = ["rt-threaded"] }
 
 [build-dependencies]
 cbindgen = "0.14.3"

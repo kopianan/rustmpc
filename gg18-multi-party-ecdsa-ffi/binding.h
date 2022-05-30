@@ -3,18 +3,15 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-typedef struct wire_uint_8_list {
-  uint8_t *ptr;
-  int32_t len;
-} wire_uint_8_list;
-
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
 
 void wire_keygen(int64_t port_,
-                 wire_uint_8_list *secrets_byte_vec,
-                 wire_uint_8_list *group_byte_vec);
+                 const unsigned char *secrets_byte_vec,
+                 uintptr_t secrets_byte_len,
+                 const unsigned char *group_byte_vec,
+                 uintptr_t group_byte_len);
 
 #ifdef __cplusplus
 } // extern "C"
