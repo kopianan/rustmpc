@@ -16,6 +16,31 @@ use structopt::StructOpt;
 use std::{fs, vec::Vec};
 use mpc_over_signal::{DeviceStore, Group, ParticipantIdentity, SignalClient};
 
+
+use lazy_static::lazy_static;
+use std::{ffi::CStr, io, os::raw};
+use tokio::runtime::{Builder, Runtime};
+
+lazy_static! {
+    static ref RUNTIME: io::Result<Runtime> = Builder::new()
+        .threaded_scheduler()
+        .enable_all()
+        .core_threads(4)
+        .thread_name("flutterust")
+        .build();
+}
+
+macro_rules! runtime {
+    () => {
+        match RUNTIME.as_ref() {
+            Ok(rt) => rt,
+            Err(_) => {
+                return ();
+            }
+        }
+    };
+}
+
 #[derive(StructOpt, Debug)]
 pub struct SignalServer {
     /// Signal Server URL
@@ -61,23 +86,18 @@ pub extern "C" fn wire_keygen(
     group_byte_vec: *const c_uchar,
     group_byte_len: usize,
 ) {
+    let rt = runtime!();
     let secrets_byte_vec = unsafe {slice::from_raw_parts(secrets_byte_vec, secrets_byte_len)};
-    let mut api_secrets_byte_vec: Vec<u8> = Vec::from(secrets_byte_vec);
+    let api_secrets_byte_vec: Vec<u8> = Vec::from(secrets_byte_vec);
     
     let group_byte_vec = unsafe {slice::from_raw_parts(group_byte_vec, group_byte_len)};
-    let mut api_group_byte_vec: Vec<u8> = Vec::from(group_byte_vec);
+    let api_group_byte_vec: Vec<u8> = Vec::from(group_byte_vec);
 
-    async move {
-        /*
-        let result = gg18_multi_party_ecdsa::keygen(api_secrets_byte_vec, api_group_byte_vec).await;
-        // make a ref to an isolate using it's port
-        let isolate = Isolate::new(port_);
-        // and sent it the `Rust's` result
-        // no need to convert anything :)
-        isolate.post(result);
-        */
+    rt.spawn(async move {
+
         let isolate = Isolate::new(port_);
         isolate.post("Reading device_secrets . . .");
+        /*
         let device_secrets = DeviceStore::from_byte_vec(api_secrets_byte_vec)
             .await
             .context("read device from file")?;
@@ -110,6 +130,7 @@ pub extern "C" fn wire_keygen(
         )
         .await;
         isolate.post(keygen_json);
-        Ok(())
-    }.into_local_ffi();
+        */
+        //Ok(())
+    }.into_ffi());
 }

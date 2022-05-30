@@ -15,6 +15,8 @@ gg18-multi-party-ecdsa = { path = "../gg18-multi-party-ecdsa" }
 mpc-over-signal = { path = "../mpc-over-signal" }
 allo-isolate = "0.1.6"
 async-ffi = "0.4.0"
+lazy_static = "1.4"
+tokio = { version = "0.2", features = ["rt-threaded"] }
 
 [build-dependencies]
 cbindgen = "0.14.3"
