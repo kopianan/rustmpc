@@ -93,11 +93,11 @@ pub extern "C" fn wire_keygen(
     let group_byte_vec = unsafe {slice::from_raw_parts(group_byte_vec, group_byte_len)};
     let api_group_byte_vec: Vec<u8> = Vec::from(group_byte_vec);
 
-    rt.spawn(async move {
+    let keygen_task = async move {
 
         let isolate = Isolate::new(port_);
         isolate.post("Reading device_secrets . . .");
-        /*
+        
         let device_secrets = DeviceStore::from_byte_vec(api_secrets_byte_vec)
             .await
             .context("read device from file")?;
@@ -120,6 +120,7 @@ pub extern "C" fn wire_keygen(
             Some(i) => i,
             None => bail!("group must contain this party too"),
         };
+        /*
         let keygen_json = keygen_run(
             device_secrets.clone(),
             group,
@@ -129,8 +130,11 @@ pub extern "C" fn wire_keygen(
             PARTIES,
         )
         .await;
+        
         isolate.post(keygen_json);
         */
-        //Ok(())
-    }.into_ffi());
+        Ok(())
+    }.into_ffi();
+
+    rt.spawn(keygen_task);
 }
