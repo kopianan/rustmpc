@@ -2,8 +2,8 @@
 
 use allo_isolate::Isolate;
 use async_ffi::{FfiFuture, FutureExt};
-use std::os::raw::{c_char, c_uchar};
 use core::slice;
+use std::os::raw::{c_char, c_uchar};
 
 //use gg18_multi_party_ecdsa::common::*;
 //use gg18_multi_party_ecdsa::dkg::*;
@@ -11,10 +11,34 @@ use core::slice;
 //use gg18_multi_party_ecdsa::utilities::*;
 use gg18_multi_party_ecdsa::cli::*;
 
-use anyhow::{ anyhow, bail, ensure, Context, Result};
-use structopt::StructOpt;
-use std::{fs, vec::Vec};
+use anyhow::{anyhow, bail, ensure, Context, Result};
 use mpc_over_signal::{DeviceStore, Group, ParticipantIdentity, SignalClient};
+use std::{fs, vec::Vec};
+use structopt::StructOpt;
+
+use lazy_static::lazy_static;
+use std::{ffi::CStr, io, os::raw};
+use tokio::runtime::{Builder, Runtime};
+
+lazy_static! {
+    static ref RUNTIME: io::Result<Runtime> = Builder::new()
+        .threaded_scheduler()
+        .enable_all()
+        .core_threads(4)
+        .thread_name("flutterust")
+        .build();
+}
+
+macro_rules! runtime {
+    () => {
+        match RUNTIME.as_ref() {
+            Ok(rt) => rt,
+            Err(_) => {
+                return ();
+            }
+        }
+    };
+}
 
 #[derive(StructOpt, Debug)]
 pub struct SignalServer {
@@ -50,8 +74,8 @@ pub struct SecretsFile {
 }
 
 //MPC CONSTANTS
-const THRESHOLD:u16 = 1;
-const PARTIES:u16 = 3;
+const THRESHOLD: u16 = 1;
+const PARTIES: u16 = 3;
 
 #[no_mangle]
 pub extern "C" fn wire_keygen(
@@ -61,57 +85,53 @@ pub extern "C" fn wire_keygen(
     group_byte_vec: *const c_uchar,
     group_byte_len: usize,
 ) {
-    let secrets_byte_vec = unsafe {slice::from_raw_parts(secrets_byte_vec, secrets_byte_len)};
-    let mut api_secrets_byte_vec: Vec<u8> = Vec::from(secrets_byte_vec);
-    
-    let group_byte_vec = unsafe {slice::from_raw_parts(group_byte_vec, group_byte_len)};
-    let mut api_group_byte_vec: Vec<u8> = Vec::from(group_byte_vec);
+    let rt = runtime!();
+    let secrets_byte_vec = unsafe { slice::from_raw_parts(secrets_byte_vec, secrets_byte_len) };
+    let api_secrets_byte_vec: Vec<u8> = Vec::from(secrets_byte_vec);
 
-    async move {
-        /*
-        let result = gg18_multi_party_ecdsa::keygen(api_secrets_byte_vec, api_group_byte_vec).await;
-        // make a ref to an isolate using it's port
-        let isolate = Isolate::new(port_);
-        // and sent it the `Rust's` result
-        // no need to convert anything :)
+    let group_byte_vec = unsafe { slice::from_raw_parts(group_byte_vec, group_byte_len) };
+    let api_group_byte_vec: Vec<u8> = Vec::from(group_byte_vec);
 
-        
-        isolate.post(result);
-        */
+    let keygen_task = async move {
         let isolate = Isolate::new(port_);
         isolate.post("Reading device_secrets . . .");
-        // let device_secrets = DeviceStore::from_byte_vec(api_secrets_byte_vec)
-        //     .await
-        //     .context("read device from file")?;
-        // isolate.post("device_secrets read completed. start reading my public key . .");
-        // let me = device_secrets.read().await.me();
-        // let group = read_group(api_group_byte_vec).context("read group")?;
-        // let result: String;
-        // let my_ind = match group.party_index(&me.addr) {
-        //     Some(i) => {isolate.post("my index is found")},
-        //     None => {isolate.post("group must contain this party too")},
-        // };
+        isolate.post("Test Here");
+        let device_secrets = DeviceStore::from_byte_vec(api_secrets_byte_vec)
+            .await?;
+        isolate.post("device_secrets read completed. start reading my public key . .");
+        let me = device_secrets.read().await.me();
+        let group = read_group(api_group_byte_vec)?;
+        let result: String;
+        let my_ind = match group.party_index(&me.addr) {
+            Some(i) => isolate.post("my index is found"),
+            None => isolate.post("group must contain this party too"),
+        };
 
-        // if group.parties_count() != PARTIES 
+        // if group.parties_count() != PARTIES
         // {
         //     isolate.post("group.parties_count() != PARTIES");
         // }
         // isolate.post("keygen_run ..");
 
-        // let my_ind = match group.party_index(&me.addr) {
-        //     Some(i) => i,
-        //     None => bail!("group must contain this party too"),
-        // };
-        // let keygen_json = keygen_run(
-        //     device_secrets.clone(),
-        //     group,
-        //     me,
-        //     my_ind,
-        //     THRESHOLD,
-        //     PARTIES,
-        // )
-        // .await;
-        // isolate.post(keygen_json);
-        // Ok(())
-    }.into_local_ffi();
+        let my_ind = match group.party_index(&me.addr) {
+            Some(i) => i,
+            None => bail!("group must contain this party too"),
+        };
+        /*
+        let keygen_json = keygen_run(
+            device_secrets.clone(),
+            group,
+            me,
+            my_ind,
+            THRESHOLD,
+            PARTIES,
+        )
+        .await;
+        isolate.post(keygen_json);
+        */
+        Ok(())
+    }
+    .into_ffi();
+
+    rt.spawn(keygen_task);
 }
