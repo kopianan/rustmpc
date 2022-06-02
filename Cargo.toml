@@ -1,5 +1,5 @@
 [workspace]
 
 members = [
-    "gg20-multi-party-ecdsa",
+    "gg20-mpc",
 ]

@@ -1537,7 +1537,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "gg20-mpc-ecdsa"
+name = "gg20-mpc"
 version = "0.1.0"
 dependencies = [
  "actix",
