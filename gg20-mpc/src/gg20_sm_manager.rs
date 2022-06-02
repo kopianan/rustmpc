@@ -179,7 +179,7 @@ struct IssuedUniqueIdx {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run_http() -> Result<(), Box<dyn std::error::Error>> {
     let figment = rocket::Config::figment().merge((
         "limits",
         rocket::data::Limits::new().limit("string", 100.megabytes()),

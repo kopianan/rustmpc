@@ -2,4 +2,5 @@
 
 members = [
     "gg20-mpc",
+    "gg20-mpc-ffi",
 ]

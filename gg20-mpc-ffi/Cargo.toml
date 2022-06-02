@@ -1,0 +1,22 @@
+[package]
+name = "gg20_mpc_ffi"
+version = "0.1.0"
+authors = ["Erwin Mochtar Wijaya <erwin.wijaya@coinbit.id>"]
+edition = "2018"
+
+[lib]
+name = "gg20_mpc_ffi"
+crate-type = ["cdylib"]
+
+[dependencies]
+anyhow = "1"
+structopt = "0.3"
+gg20-mpc = { path = "../gg20-mpc" }
+allo-isolate = "0.1.6"
+async-ffi = "0.4.0"
+lazy_static = "1.4"
+tokio = { version = "0.2", features = ["rt-threaded"] }
+
+[build-dependencies]
+cbindgen = "0.14.3"
+dart-bindgen = "0.1.0"

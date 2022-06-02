@@ -26,6 +26,7 @@ use presigning::presign::{
 
 mod gg20_sm_client;
 use gg20_sm_client::join_computation;
+mod gg20_sm_manager;
 
 #[derive(Debug, StructOpt)]
 struct Cli {
@@ -41,7 +42,17 @@ struct Cli {
     number_of_parties: u16,
 }
 
-async fn keygen() -> Result<()> {
+//MPC CONSTANTS
+const THRESHOLD:u16 = 1;
+const PARTIES:u16 = 3;
+
+pub async fn http_local_run()
+{
+    gg20_sm_manager::run_http();
+}
+
+pub async fn keygen_run(index:u16) -> Result<String> {
+    
     let args: Cli = Cli::from_args();
 
     let (_i, incoming, outgoing) = join_computation(args.address, &args.room)
@@ -52,18 +63,15 @@ async fn keygen() -> Result<()> {
     tokio::pin!(incoming);
     tokio::pin!(outgoing);
 
-    let keygen = Keygen::new(args.index, args.threshold, args.number_of_parties)?;
-    let output = AsyncProtocol::new(keygen, incoming, outgoing)
+    let keygen = Keygen::new(index, THRESHOLD, PARTIES)?;
+    let output = round_based::AsyncProtocol::new(keygen, incoming, outgoing)
         .run()
         .await
         .map_err(|e| anyhow!("protocol execution terminated with error: {}", e))?;
-    let output = serde_json::to_vec_pretty(&output).context("serialize output")?;
-    /*
-    tokio::io::copy(&mut output.as_slice(), &mut output_file)
-        .await
-        .context("save output to file")?;
-    */
-    Ok(())
+    let output = serde_json::to_string(&output).unwrap();
+
+    Ok(output)
+    
 }
 
 /*
