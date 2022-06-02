@@ -1,22 +1,21 @@
-
 use structopt::StructOpt;
 
+use actix_rt::System;
+
+use awc::Client;
 use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
 
+use futures::StreamExt;
 
-use futures::{StreamExt};
-
-use std::{fs, vec::Vec};
 use mpc_over_signal::{DeviceStore, Group, ParticipantIdentity, SignalClient};
+use std::{fs, vec::Vec};
 
-use crate::dkg::keygen::Keygen;
-use curv::{
-    BigInt,
-};
 use crate::common::party_i::{LocalKeyShare, Params};
+use crate::dkg::keygen::Keygen;
 use crate::signing::sign::OfflineStage;
+use curv::BigInt;
 
 #[derive(StructOpt, Debug)]
 /// Demo CLI
@@ -153,7 +152,7 @@ pub struct VerifyArgs {
 }
 
 #[allow(clippy::too_many_arguments)]
-pub async fn keygen_run(
+pub fn keygen_run(
     device_secrets: DeviceStore,
     group: Group,
     me: ParticipantIdentity,
@@ -161,40 +160,50 @@ pub async fn keygen_run(
     t: u16,
     n: u16,
 ) -> Result<String> {
-    device_secrets
-        .write()
-        .await
-        .trust_to(&group)
-        .context("adding trust to the group")?;
-    
-    let mut signal_client = signal_client()
-        .unwrap()
-        .start_listening_for_incoming_messages(device_secrets)
-        .await
-        .context("connecting to signal api")?;
-    
-    let (incoming, outgoing) = signal_client
-        .join_computation(me.addr, group)
-        .await
-        .context("join computation")?;
-    let incoming = incoming.fuse();
-    let initial = Keygen::new(i, t, n).context("create initial state")?;
-    let output = round_based::AsyncProtocol::new(initial, incoming, outgoing)
-        .run()
-        .await
-        .map_err(|e| anyhow!("execute keygen protocol: {}", e))?;
-    // save local key shares into json file
-    let keygen_json = serde_json::to_string(&(
-        output.keys,
-        output.shared_keys,
-        output.party_num_int,
-        output.vss_vec,
-        output.pail_key_vec,
-        output.y_sum_s,
-        ))
-        .unwrap();
-    
-    Ok(keygen_json)
+    System::new().block_on(async {
+        device_secrets
+            .write()
+            .await
+            .trust_to(&group)
+            .context("adding trust to the group")?;
+        let client = Client::default();
+        let res = client
+            .get("http://www.rust-lang.org")
+            .insert_header(("User-Agent", "Actix-web"))
+            .send() // <- Send http request
+            .await;
+
+        // println!("Response: {}", resp.status());
+        // let mut signal_client = signal_client()
+        //     .unwrap()
+        //     .start_listening_for_incoming_messages(device_secrets)
+        //     .await
+        //     .context("connecting to signal api")?;
+
+        // let (incoming, outgoing) = signal_client
+        //     .join_computation(me.addr, group)
+        //     .await
+        //     .context("join computation")?;
+        // let incoming = incoming.fuse();
+        // let initial = Keygen::new(i, t, n).context("create initial state")?;
+        // let output = round_based::AsyncProtocol::new(initial, incoming, outgoing)
+        //     .run()
+        //     .await
+        //     .map_err(|e| anyhow!("execute keygen protocol: {}", e))?;
+        // // save local key shares into json file
+        // let keygen_json = serde_json::to_string(&(
+        //     output.keys,
+        //     output.shared_keys,
+        //     output.party_num_int,c
+        //     output.vss_vec,
+        //     output.pail_key_vec,
+        //     output.y_sum_s,
+        // ))
+        // .unwrap();
+
+        // Ok(keygen_json)
+        Ok("data".into())
+    })
 }
 
 pub async fn sign_run(
@@ -206,7 +215,6 @@ pub async fn sign_run(
     key_share: LocalKeyShare,
     message_bn: BigInt,
 ) -> Result<()> {
-
     //read parameters:
     let data = fs::read_to_string("params.json")
         .expect("Unable to read params, make sure config file is present in the same folder ");
@@ -229,7 +237,6 @@ pub async fn sign_run(
         .await
         .map_err(|e| anyhow!("protocol execution terminated with error: {}", e))?;
 
-    
     /*outgoing
         .send(Msg {
             sender: my_ind,
@@ -249,7 +256,6 @@ pub async fn sign_run(
         .context("online stage failed")?;
     let signature = serde_json::to_string(&signature).context("serialize signature")?;
     println!("{}", signature);*/
-    
 
     Ok(())
 }
@@ -282,7 +288,7 @@ pub fn signal_client() -> Result<SignalClient> {
     Ok(builder.finish())
 }
 
-pub fn read_group(file_content:Vec<u8>) -> Result<Group> {
+pub fn read_group(file_content: Vec<u8>) -> Result<Group> {
     let parties_raw =
         serde_json::Deserializer::from_slice(&file_content).into_iter::<ParticipantIdentity>();
     let mut parties = vec![];

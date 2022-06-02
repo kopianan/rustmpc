@@ -1,7 +1,7 @@
 #![allow(clippy::missing_safety_doc, clippy::not_unsafe_ptr_arg_deref)]
 
 use allo_isolate::Isolate;
-use async_ffi::{FfiFuture, FutureExt};
+use async_ffi::{FfiFuture, FutureExt, LocalFfiFuture};
 use core::slice;
 use std::os::raw::{c_char, c_uchar};
 
@@ -96,8 +96,7 @@ pub extern "C" fn wire_keygen(
         let isolate = Isolate::new(port_);
         isolate.post("Reading device_secrets . . .");
         isolate.post("Test Here");
-        let device_secrets = DeviceStore::from_byte_vec(api_secrets_byte_vec)
-            .await?;
+        let device_secrets = DeviceStore::from_byte_vec(api_secrets_byte_vec).await?;
         isolate.post("device_secrets read completed. start reading my public key . .");
         let me = device_secrets.read().await.me();
         let group = read_group(api_group_byte_vec)?;
@@ -106,18 +105,10 @@ pub extern "C" fn wire_keygen(
             Some(i) => isolate.post("my index is found"),
             None => isolate.post("group must contain this party too"),
         };
-
-        // if group.parties_count() != PARTIES
-        // {
-        //     isolate.post("group.parties_count() != PARTIES");
-        // }
-        // isolate.post("keygen_run ..");
-
         let my_ind = match group.party_index(&me.addr) {
             Some(i) => i,
             None => bail!("group must contain this party too"),
         };
-        /*
         let keygen_json = keygen_run(
             device_secrets.clone(),
             group,
@@ -125,13 +116,38 @@ pub extern "C" fn wire_keygen(
             my_ind,
             THRESHOLD,
             PARTIES,
-        )
-        .await;
+        );
+        isolate.post("Signal"); 
         isolate.post(keygen_json);
-        */
         Ok(())
     }
     .into_ffi();
-
     rt.spawn(keygen_task);
 }
+// }
+// #[no_mangle]
+// pub extern "C" fn wire_keygen(
+//     port_: i64,
+//     secrets_byte_vec: *const c_uchar,
+//     secrets_byte_len: usize,
+//     group_byte_vec: *const c_uchar,
+//     group_byte_len: usize,
+// ) -> FfiFuture<u32> {
+//     let secrets_byte_vec = unsafe { slice::from_raw_parts(secrets_byte_vec, secrets_byte_len) };
+//     let api_secrets_byte_vec: Vec<u8> = Vec::from(secrets_byte_vec);
+
+//     let group_byte_vec = unsafe { slice::from_raw_parts(group_byte_vec, group_byte_len) };
+//     let api_group_byte_vec: Vec<u8> = Vec::from(group_byte_vec);
+
+//     async move { unsafe { return 12 } }.into_ffi();
+// }
+
+#[no_mangle]
+pub extern "C" fn work(arg: u32) -> LocalFfiFuture<u32> {
+    async move { 12 }.into_local_ffi()
+}
+
+// #[no_mangle]
+// pub extern "C" fn wire_test1() {
+//     async move { 123 }.into_ffi();
+// }
