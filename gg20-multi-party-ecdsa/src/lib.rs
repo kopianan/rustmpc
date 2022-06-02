@@ -8,14 +8,11 @@ use futures::channel::oneshot;
 use futures::{SinkExt, StreamExt, TryStreamExt};
 use rand::rngs::OsRng;
 
-use mpc_over_signal::{DeviceStore, Group, ParticipantIdentity, SignalClient};
 use round_based::Msg;
+use round_based::async_runtime::AsyncProtocol;
 
 use curv::arithmetic::Converter;
 use curv::BigInt;
-
-mod cli;
-use cli::Cmd;
 
 mod common;
 mod dkg;
@@ -27,125 +24,49 @@ use presigning::presign::{
     OfflineStage, SignManual,
 };
 
-#[actix::main]
-async fn main() -> Result<()> {
-    let args: cli::App = StructOpt::from_args();
-    if args.debug {
-        tracing_subscriber::fmt::init();
-    }
-    match args.command {
-        Cmd::Login(args) => login(args).await,
-        Cmd::Me(args) => me(args).await,
-        Cmd::Keygen(args) => keygen(args).await,
-        Cmd::Presign(args) => presign(args).await,
-        Cmd::Sign(args) => sign(args).await,
-    }
+mod gg20_sm_client;
+use gg20_sm_client::join_computation;
+
+#[derive(Debug, StructOpt)]
+struct Cli {
+    #[structopt(short, long, default_value = "http://localhost:8000/")]
+    address: surf::Url,
+    #[structopt(short, long, default_value = "default-keygen")]
+    room: String,
+    #[structopt(short, long)]
+    index: u16,
+    #[structopt(short, long)]
+    threshold: u16,
+    #[structopt(short, long)]
+    number_of_parties: u16,
 }
 
-async fn login(args: cli::LoginArgs) -> Result<()> {
-    let signal_client = signal_client(args.server)
+async fn keygen() -> Result<()> {
+    let args: Cli = Cli::from_args();
+
+    let (_i, incoming, outgoing) = join_computation(args.address, &args.room)
         .await
-        .context("constructing signal client")?;
+        .context("join computation")?;
 
-    let (provision_url_tx, provision_url) = oneshot::channel();
-    let (device_tx, device) = oneshot::channel();
-    let device_name = args.device_name;
-    actix::spawn(async move {
-        let device = signal_client
-            .login(&mut OsRng, provision_url_tx, device_name)
-            .await
-            .context("login failed");
-        let _ = device_tx.send(device);
-    });
+    let incoming = incoming.fuse();
+    tokio::pin!(incoming);
+    tokio::pin!(outgoing);
 
-    match provision_url.await {
-        Ok(url) => {
-            println!();
-            println!("To continue, scan following QR code using Signal app on your phone.");
-            println!("On Android: Signal Settings → Linked Devices → '+' Button");
-            println!("On iOS:     Signal Settings → Linked Devices → Link New Device");
-            println!();
-            qr2term::print_qr(url.to_string()).context("printing QR code")?
-        }
-        Err(_e) => {
-            // real error will be discovered below
-        }
-    }
-
-    let device = device.await.context("retrieving device")??;
-    DeviceStore::new(device)
-        .save_no_overwrite(args.secrets.path)
+    let keygen = Keygen::new(args.index, args.threshold, args.number_of_parties)?;
+    let output = AsyncProtocol::new(keygen, incoming, outgoing)
+        .run()
         .await
-        .context("save secrets")?;
-
-    println!();
-    println!("MPC device successfully created");
-
+        .map_err(|e| anyhow!("protocol execution terminated with error: {}", e))?;
+    let output = serde_json::to_vec_pretty(&output).context("serialize output")?;
+    /*
+    tokio::io::copy(&mut output.as_slice(), &mut output_file)
+        .await
+        .context("save output to file")?;
+    */
     Ok(())
 }
 
-async fn me(args: cli::MeArgs) -> Result<()> {
-    let device = DeviceStore::from_file(args.secrets.path)
-        .await
-        .context("read device from file")?;
-    let device = device.read().await;
-    let me = device.me();
-    if args.json {
-        let json = serde_json::to_string(&me).context("serialize")?;
-        println!("{}", json);
-    } else {
-        println!("Name:       {}", me.addr.name());
-        println!("Device ID:  {}", me.addr.device_id());
-        println!("Public key: {}", base64::encode(me.public_key.serialize()));
-    }
-    Ok(())
-}
-
-async fn keygen(args: cli::KeygenArgs) -> Result<()> {
-    let signal_client = signal_client(args.server)
-        .await
-        .context("constructing signal client")?;
-    let mut device_secrets = DeviceStore::from_file(&args.secrets.path)
-        .await
-        .context("read device from file")?;
-    let me = device_secrets.read().await.me();
-
-    let group = read_group(args.group).await.context("read group")?;
-    let my_ind = match group.party_index(&me.addr) {
-        Some(i) => i,
-        None => bail!("group must contain this party too"),
-    };
-
-    ensure!(
-        group.parties_count() == args.parties,
-        "protocol expected to have {} parties (from `-n` option), but group file contains {} parties",
-        args.parties, group.parties_count()
-    );
-    ensure!(args.parties > 1, "at least two parties required");
-    ensure!(
-        args.parties >= args.threshold,
-        "threshold value is more than number of parties"
-    );
-
-    keygen_run(
-        signal_client,
-        device_secrets.clone(),
-        group,
-        me,
-        my_ind,
-        args.threshold,
-        args.parties,
-        args.output,
-    )
-    .await;
-
-    if let Err(err) = device_secrets.save(args.secrets.path).await {
-        tracing::event!(tracing::Level::ERROR, %err, "Failed to save secrets to file");
-    }
-
-    Ok(())
-}
-
+/*
 #[allow(clippy::too_many_arguments)]
 async fn keygen_run(
     signal_client: SignalClient,
@@ -370,71 +291,7 @@ async fn sign_run (
     
     Ok(())
 }
-/*
-async fn verify(args: cli::VerifyArgs) -> Result<()> {
-    let public_key =
-        hex::decode(args.public_key).context("public key is not valid hex encoded string")?;
-    let signature =
-        hex::decode(args.signature).context("signature key is not valid hex encoded string")?;
 
-    let signature = GE1::from_bytes(&signature)
-        .map_err(|e| anyhow!("signature is not valid g1 point: {:?}", e))?;
-    let public_key = GE2::from_bytes(&public_key)
-        .map_err(|e| anyhow!("public key is not valid g2 point: {:?}", e))?;
-
-    let valid = BLSSignature { sigma: signature }.verify(&args.digits, &public_key);
-    if valid {
-        println!("Signature is valid");
-    } else {
-        bail!("Signature is not valid");
-    }
-
-    Ok(())
-}
-*/
-async fn signal_client(server: cli::SignalServer) -> Result<SignalClient> {
-    let mut builder = SignalClient::builder()?;
-    builder.set_server_host(server.host)?;
-
-    if let Some(cert) = server.certificate {
-        let cert = tokio::fs::read(cert).await.context("read certificate")?;
-
-        let mut root_certs = rustls::RootCertStore::empty();
-        root_certs
-            .add_pem_file(&mut cert.as_slice())
-            .map_err(|()| anyhow!("parse certificate"))?;
-
-        let mut tls_config = rustls::ClientConfig::new();
-        tls_config.root_store = root_certs;
-
-        let client = awc::Client::builder()
-            .connector(
-                awc::Connector::new()
-                    .rustls(tls_config.into())
-                    .timeout(Duration::from_secs(30))
-                    .finish(),
-            )
-            .disable_timeout()
-            .finish();
-
-        builder.set_http_client(client);
-    }
-
-    Ok(builder.finish())
-}
-
-async fn read_group(path: impl AsRef<Path>) -> Result<Group> {
-    let file_content = tokio::fs::read(path).await.context("read group file")?;
-    let parties_raw =
-        serde_json::Deserializer::from_slice(&file_content).into_iter::<ParticipantIdentity>();
-    let mut parties = vec![];
-    for (i, party) in parties_raw.enumerate() {
-        parties.push(party.context(format!("parse {} party", i))?)
-    }
-    Ok(Group::new(parties))
-}
-
-/*
 async fn save_local_key(local_key: &LocalKey, output_file: File) -> Result<()> {
     let ser_output = serde_json::to_vec_pretty(&local_key).context("serialize output")?;
     tokio::io::copy(&mut ser_output.as_slice(), &mut output_file)

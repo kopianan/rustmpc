@@ -1,7 +1,0 @@
-/gg18-mpc-ecdsa
-/gg20-mpc-ecdsa
-/target
-.idea/
-secrets*.json
-local-key*.json
-group*.json
