@@ -1,14 +1,15 @@
 [package]
-name = "gg20_mpc_ffi"
+name = "gg20_rust1"
 version = "0.1.0"
 authors = ["Erwin Mochtar Wijaya <erwin.wijaya@coinbit.id>"]
 edition = "2018"
 
 [lib]
-name = "gg20_mpc_ffi"
-crate-type = ["cdylib"]
+name = "gg20_rust_lib1"
+crate-type = ["cdylib", "dylib","staticlib" ]
 
 [dependencies]
+openssl = { version = "0.10", features = ["vendored"] }
 anyhow = "1"
 structopt = "0.3"
 gg20-mpc = { path = "../gg20-mpc" }

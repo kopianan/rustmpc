@@ -8,8 +8,8 @@ use futures::channel::oneshot;
 use futures::{SinkExt, StreamExt, TryStreamExt};
 use rand::rngs::OsRng;
 
-use round_based::Msg;
 use round_based::async_runtime::AsyncProtocol;
+use round_based::Msg;
 
 use curv::arithmetic::Converter;
 use curv::BigInt;
@@ -20,9 +20,7 @@ mod presigning;
 mod utilities;
 
 use dkg::keygen::Keygen;
-use presigning::presign::{
-    OfflineStage, SignManual,
-};
+use presigning::presign::{OfflineStage, SignManual};
 
 mod gg20_sm_client;
 use gg20_sm_client::join_computation;
@@ -30,7 +28,7 @@ mod gg20_sm_manager;
 
 #[derive(Debug, StructOpt)]
 struct Cli {
-    #[structopt(short, long, default_value = "http://localhost:8000/")]
+    #[structopt(short, long, default_value = "http://192.168.1.22:8080/")]
     address: surf::Url,
     #[structopt(short, long, default_value = "default-keygen")]
     room: String,
@@ -43,16 +41,14 @@ struct Cli {
 }
 
 //MPC CONSTANTS
-const THRESHOLD:u16 = 1;
-const PARTIES:u16 = 3;
+const THRESHOLD: u16 = 1;
+const PARTIES: u16 = 3;
 
-pub async fn http_local_run()
-{
+pub async fn http_local_run() {
     gg20_sm_manager::run_http();
 }
 
-pub async fn keygen_run(index:u16) -> Result<String> {
-    
+pub async fn keygen_run(index: u16) -> Result<String> {
     let args: Cli = Cli::from_args();
 
     let (_i, incoming, outgoing) = join_computation(args.address, &args.room)
@@ -71,7 +67,6 @@ pub async fn keygen_run(index:u16) -> Result<String> {
     let output = serde_json::to_string(&output).unwrap();
 
     Ok(output)
-    
 }
 
 /*
@@ -96,7 +91,6 @@ async fn keygen_run(
         .start_listening_for_incoming_messages(device_secrets)
         .await
         .context("connecting to signal api")?;
-    
     let mut output_file = tokio::fs::OpenOptions::new()
         .write(true)
         .create_new(true)
@@ -121,7 +115,6 @@ async fn keygen_run(
     tokio::io::copy(&mut ser_output.as_slice(), &mut output_file)
         .await
         .context("save output to file")?;
-    
     Ok(())
 }
 
@@ -141,7 +134,6 @@ async fn presign(args: cli::PresignArgs) -> Result<()> {
         Some(i) => i,
         None => bail!("group must contain this party too"),
     };
-    
     presign_run(
         signal_client,
         device_secrets.clone(),
@@ -178,7 +170,6 @@ async fn presign_run(
     let local_key = serde_json::from_slice(&local_key).context("parse local share")?;
 
     let number_of_parties = args_parties.len();
-    
     let mut signal_client = signal_client
         .start_listening_for_incoming_messages(device_secrets)
         .await
@@ -226,7 +217,6 @@ async fn sign(args: cli::SignArgs) -> Result<()> {
         Some(i) => i,
         None => bail!("group must contain this party too"),
     };
-    
     sign_run(
         signal_client,
         device_secrets.clone(),
@@ -260,7 +250,6 @@ async fn sign_run (
     let presign_share = tokio::fs::read(presign_share_path).await.context("cannot read presign share")?;
     let completed_offline_stage = serde_json::from_slice(&presign_share).context("parse local presign share")?;
     let number_of_parties = args_parties.len();
-    
     let mut signal_client = signal_client
         .start_listening_for_incoming_messages(device_secrets)
         .await
@@ -275,7 +264,6 @@ async fn sign_run (
         BigInt::from_bytes(message.as_bytes()),
         completed_offline_stage,
     )?;
-    
     outgoing
         .send(Msg {
             sender: my_ind,
@@ -283,20 +271,16 @@ async fn sign_run (
             body: partial_signature,
         })
         .await?;
-    
     let partial_signatures: Vec<_> = incoming
         .take(number_of_parties - 1)
         .map_ok(|msg| msg.body)
         .try_collect()
         .await?;
-    
     let signature = signing
         .complete(&partial_signatures)
         .context("online stage failed")?;
-    
     let signature = serde_json::to_string(&signature).context("serialize signature")?;
-    println!("{}", signature); 
-    
+    println!("{}", signature);
     Ok(())
 }
 
@@ -314,4 +298,3 @@ async fn read_local_key(path: impl AsRef<Path>) -> Result<LocalKey> {
     let local_share = serde_json::from_slice(&local_share).context("parse local share")?;
 }
 */
-
