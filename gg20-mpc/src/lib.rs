@@ -34,11 +34,11 @@ struct Cli {
     address: surf::Url,
     #[structopt(short, long, default_value = "default-keygen")]
     room: String,
-    #[structopt(short, long)]
+    #[structopt(short, long, default_value = "1")]
     index: u16,
-    #[structopt(short, long)]
+    #[structopt(short, long, default_value = "1")]
     threshold: u16,
-    #[structopt(short, long)]
+    #[structopt(short, long, default_value = "3")]
     number_of_parties: u16,
 }
 
