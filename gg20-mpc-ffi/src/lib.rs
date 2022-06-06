@@ -56,7 +56,7 @@ pub extern "C" fn wire_keygen(
     let rt = runtime!();
     let keygen_task = async move {
         let isolate = Isolate::new(port_);
-        let result = gg20_mpc::keygen_run(index).await;
+        let result = gg20_mpc::keygen_run(index, port_).await;
         isolate.post(result);
     }.into_ffi();
 

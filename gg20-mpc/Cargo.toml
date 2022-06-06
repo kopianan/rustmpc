@@ -33,7 +33,7 @@ hex = "0.4"
 serde_json = "1"
 surf = "2"
 rocket = { version = "0.5.0-rc.1", default-features = false, features = ["json"] }
-
+allo-isolate = "0.1.6"
 ############TECDSA###################
 subtle = { version = "2" }
 serde = { version = "1.0", features = ["derive"] }

@@ -51,7 +51,7 @@ pub async fn http_local_run()
     gg20_sm_manager::run_http();
 }
 
-pub async fn keygen_run(index:u16) -> Result<String> {
+pub async fn keygen_run(index:u16, port_: i64) -> Result<String> {
     
     let args: Cli = Cli::from_args();
 
@@ -63,7 +63,7 @@ pub async fn keygen_run(index:u16) -> Result<String> {
     tokio::pin!(incoming);
     tokio::pin!(outgoing);
 
-    let keygen = Keygen::new(index, THRESHOLD, PARTIES)?;
+    let keygen = Keygen::new(index, THRESHOLD, PARTIES, port_)?;
     let output = round_based::AsyncProtocol::new(keygen, incoming, outgoing)
         .run()
         .await
