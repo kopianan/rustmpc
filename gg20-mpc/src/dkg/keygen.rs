@@ -21,7 +21,7 @@ use crate::common::party_i::{KeyGenBroadcastMessage1, KeyGenDecommitMessage1};
 pub use super::rounds::{LocalKey, ProceedError};
 use super::rounds::{Round0, Round1, Round2, Round3, Round4};
 
-
+use allo_isolate::Isolate;
 /// Keygen protocol state machine
 ///
 /// Successfully completed keygen protocol produces [LocalKey] that can be used in further
@@ -38,6 +38,7 @@ pub struct Keygen {
 
     party_i: u16,
     party_n: u16,
+    port   : i64,
 }
 
 impl Keygen {
@@ -51,7 +52,7 @@ impl Keygen {
     /// * `n` is less than 2, returns [Error::TooFewParties]
     /// * `t` is not in range `[1; n-1]`, returns [Error::InvalidThreshold]
     /// * `i` is not in range `[1; n]`, returns [Error::InvalidPartyIndex]
-    pub fn new(i: u16, t: u16, n: u16) -> Result<Self> {
+    pub fn new(i: u16, t: u16, n: u16, p: i64) -> Result<Self> {
         if n < 2 {
             return Err(Error::TooFewParties);
         }
@@ -73,6 +74,7 @@ impl Keygen {
 
             party_i: i,
             party_n: n,
+            port: p,
         };
 
         state.proceed_round(false)?;
@@ -89,6 +91,8 @@ impl Keygen {
     /// Proceeds round state if it received enough messages and if it's cheap to compute or
     /// `may_block == true`
     fn proceed_round(&mut self, may_block: bool) -> Result<()> {
+        let isolate = Isolate::new(self.port);
+        isolate.post("enter proceed_round");
         let store1_wants_more = self.msgs1.as_ref().map(|s| s.wants_more()).unwrap_or(false);
         let store2_wants_more = self.msgs2.as_ref().map(|s| s.wants_more()).unwrap_or(false);
         let store3_wants_more = self.msgs3.as_ref().map(|s| s.wants_more()).unwrap_or(false);
@@ -97,6 +101,7 @@ impl Keygen {
         let next_state: R;
         let try_again: bool = match replace(&mut self.round, R::Gone) {
             R::Round0(round) if !round.is_expensive() || may_block => {
+                isolate.post("Round 0");
                 next_state = round
                     .proceed(self.gmap_queue(M::Round1))
                     .map(R::Round1)
@@ -108,6 +113,7 @@ impl Keygen {
                 false
             }
             R::Round1(round) if !store1_wants_more && (!round.is_expensive() || may_block) => {
+                isolate.post("Round 1");
                 let store = self.msgs1.take().ok_or(InternalError::StoreGone)?;
                 let msgs = store
                     .finish()
@@ -123,6 +129,7 @@ impl Keygen {
                 false
             }
             R::Round2(round) if !store2_wants_more && (!round.is_expensive() || may_block) => {
+                isolate.post("Round 2");
                 let store = self.msgs2.take().ok_or(InternalError::StoreGone)?;
                 let msgs = store
                     .finish()
@@ -138,6 +145,7 @@ impl Keygen {
                 false
             }
             R::Round3(round) if !store3_wants_more && (!round.is_expensive() || may_block) => {
+                isolate.post("Round 3");
                 let store = self.msgs3.take().ok_or(InternalError::StoreGone)?;
                 let msgs = store
                     .finish()
@@ -153,6 +161,7 @@ impl Keygen {
                 false
             }
             R::Round4(round) if !store4_wants_more && (!round.is_expensive() || may_block) => {
+                isolate.post("Round 4a");
                 let store = self.msgs4.take().ok_or(InternalError::StoreGone)?;
                 let msgs = store
                     .finish()
@@ -164,10 +173,12 @@ impl Keygen {
                 true
             }
             s @ R::Round4(_) => {
+                isolate.post("Round 4b");
                 next_state = s;
                 false
             }
             s @ R::Final(_) | s @ R::Gone => {
+                isolate.post("Round Final");
                 next_state = s;
                 false
             }
@@ -188,7 +199,13 @@ impl StateMachine for Keygen {
     type Output = LocalKey<Secp256k1>;
 
     fn handle_incoming(&mut self, msg: Msg<Self::MessageBody>) -> Result<()> {
+        let isolate = Isolate::new(self.port);
+
         let current_round = self.current_round();
+
+        let s1 = "handle_incoming, current round";
+        let s2 = format!("{}{}{}", s1, "-", current_round);
+        isolate.post(s2);
 
         match msg.body {
             ProtocolMessage(M::Round1(m)) => {
