@@ -92,7 +92,6 @@ impl Keygen {
     /// `may_block == true`
     fn proceed_round(&mut self, may_block: bool) -> Result<()> {
         let isolate = Isolate::new(self.port);
-        isolate.post("enter proceed_round");
         let store1_wants_more = self.msgs1.as_ref().map(|s| s.wants_more()).unwrap_or(false);
         let store2_wants_more = self.msgs2.as_ref().map(|s| s.wants_more()).unwrap_or(false);
         let store3_wants_more = self.msgs3.as_ref().map(|s| s.wants_more()).unwrap_or(false);
@@ -101,7 +100,6 @@ impl Keygen {
         let next_state: R;
         let try_again: bool = match replace(&mut self.round, R::Gone) {
             R::Round0(round) if !round.is_expensive() || may_block => {
-                isolate.post("Round 0");
                 next_state = round
                     .proceed(self.gmap_queue(M::Round1))
                     .map(R::Round1)
@@ -113,7 +111,6 @@ impl Keygen {
                 false
             }
             R::Round1(round) if !store1_wants_more && (!round.is_expensive() || may_block) => {
-                isolate.post("Round 1");
                 let store = self.msgs1.take().ok_or(InternalError::StoreGone)?;
                 let msgs = store
                     .finish()
@@ -129,7 +126,6 @@ impl Keygen {
                 false
             }
             R::Round2(round) if !store2_wants_more && (!round.is_expensive() || may_block) => {
-                isolate.post("Round 2");
                 let store = self.msgs2.take().ok_or(InternalError::StoreGone)?;
                 let msgs = store
                     .finish()
@@ -145,7 +141,6 @@ impl Keygen {
                 false
             }
             R::Round3(round) if !store3_wants_more && (!round.is_expensive() || may_block) => {
-                isolate.post("Round 3");
                 let store = self.msgs3.take().ok_or(InternalError::StoreGone)?;
                 let msgs = store
                     .finish()
@@ -161,7 +156,6 @@ impl Keygen {
                 false
             }
             R::Round4(round) if !store4_wants_more && (!round.is_expensive() || may_block) => {
-                isolate.post("Round 4a");
                 let store = self.msgs4.take().ok_or(InternalError::StoreGone)?;
                 let msgs = store
                     .finish()
@@ -173,12 +167,10 @@ impl Keygen {
                 true
             }
             s @ R::Round4(_) => {
-                isolate.post("Round 4b");
                 next_state = s;
                 false
             }
             s @ R::Final(_) | s @ R::Gone => {
-                isolate.post("Round Final");
                 next_state = s;
                 false
             }
@@ -203,9 +195,9 @@ impl StateMachine for Keygen {
 
         let current_round = self.current_round();
 
-        let s1 = "handle_incoming, current round";
-        let s2 = format!("{}{}{}", s1, "-", current_round);
-        isolate.post(s2);
+        println!("current_round = {}, msg.sender = {:#?}, msg.receiver = {:#?}", current_round, msg.sender, msg.receiver);
+        let s1 = format!("current_round = {}, msg.sender = {:#?}, msg.receiver = {:#?}", current_round, msg.sender, msg.receiver);
+        isolate.post(s1);
 
         match msg.body {
             ProtocolMessage(M::Round1(m)) => {
@@ -280,10 +272,17 @@ impl StateMachine for Keygen {
     }
 
     fn message_queue(&mut self) -> &mut Vec<Msg<Self::MessageBody>> {
+        let isolate = Isolate::new(self.port);
+        isolate.post("message_queue");
+        println!("message_queue");
+        
         &mut self.msgs_queue
     }
 
     fn wants_to_proceed(&self) -> bool {
+        let isolate = Isolate::new(self.port);
+        isolate.post("wants_to_proceed");
+        println!("wants_to_proceed");
         let store1_wants_more = self.msgs1.as_ref().map(|s| s.wants_more()).unwrap_or(false);
         let store2_wants_more = self.msgs2.as_ref().map(|s| s.wants_more()).unwrap_or(false);
         let store3_wants_more = self.msgs3.as_ref().map(|s| s.wants_more()).unwrap_or(false);
@@ -300,22 +299,37 @@ impl StateMachine for Keygen {
     }
 
     fn proceed(&mut self) -> Result<()> {
+        let isolate = Isolate::new(self.port);
+        isolate.post("proceed");
+        println!("proceed");
         self.proceed_round(true)
     }
 
     fn round_timeout(&self) -> Option<Duration> {
+        let isolate = Isolate::new(self.port);
+        isolate.post("round_timeout");
+        println!("round_timeout");
         None
     }
 
     fn round_timeout_reached(&mut self) -> Self::Err {
+        let isolate = Isolate::new(self.port);
+        isolate.post("round_timeout_reached");
+        println!("round_timeout_reached");
         panic!("no timeout was set")
     }
 
     fn is_finished(&self) -> bool {
+        let isolate = Isolate::new(self.port);
+        isolate.post("is_finished");
+        println!("is_finished");
         matches!(self.round, R::Final(_))
     }
 
     fn pick_output(&mut self) -> Option<Result<Self::Output>> {
+        let isolate = Isolate::new(self.port);
+        isolate.post("pick_output");
+        println!("pick_output");
         match self.round {
             R::Final(_) => (),
             R::Gone => return Some(Err(Error::DoublePickOutput)),
