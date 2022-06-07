@@ -9,7 +9,7 @@ use round_based::async_runtime::AsyncProtocol;
 #[tokio::main]
 async fn main() -> Result<()> {
 
-    let result = gg20_mpc::keygen_run(3).await;
+    let result = gg20_mpc::keygen_run(3,3).await;
     println!("{:?}",result);
     Ok(())
 
