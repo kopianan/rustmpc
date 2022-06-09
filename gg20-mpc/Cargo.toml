@@ -11,7 +11,7 @@ default = ["curv-kzen/num-bigint"]
 cclst = ["class_group"]
 
 [dependencies]
-round-based = "0.1.1"
+round-based =  { path = "../round-based-protocol" }
 
 actix = "0.11.0-beta.2"
 awc = { version = "3.0.0-beta.2", features = ["rustls"] }
