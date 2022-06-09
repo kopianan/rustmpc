@@ -10,7 +10,7 @@ edition = "2018"
 default = ["curv-kzen/num-bigint"]
 cclst = ["class_group"]
 
-[dependencies] 
+[dependencies]
 round-based =  { path = "../round-based-protocol" }
 
 actix = "0.11.0-beta.2"

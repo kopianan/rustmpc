@@ -1,5 +1,1 @@
-/target
-.idea/
-secrets*.json
-local-key*.json
-group*.json
+target/

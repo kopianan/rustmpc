@@ -7,10 +7,6 @@ use core::slice;
 
 use gg20_mpc::*;
 
-use anyhow::{ anyhow, bail, ensure, Context, Result};
-use structopt::StructOpt;
-use std::{fs, vec::Vec};
-
 use lazy_static::lazy_static;
 use std::{ffi::CStr, io, os::raw};
 use tokio::runtime::{Builder, Runtime};
@@ -61,4 +57,45 @@ pub extern "C" fn wire_keygen(
     }.into_ffi();
 
     rt.spawn(keygen_task);
+}
+
+#[no_mangle]
+pub extern "C" fn wire_presign(
+    port_: i64,
+    index: u16,
+    local_key_vec: *const c_uchar,
+    local_key_len: usize,
+) {
+    let rt = runtime!();
+    let local_key = unsafe {slice::from_raw_parts(local_key_vec, local_key_len)};
+    let local_key: Vec<u8> = Vec::from(local_key);
+
+    let presign_task = async move {
+        let isolate = Isolate::new(port_);
+        let result = gg20_mpc::presign_run(index, local_key).await;
+        isolate.post(result);
+    }.into_ffi();
+
+    rt.spawn(presign_task);
+}
+
+#[no_mangle]
+pub extern "C" fn wire_sign(
+    port_: i64,
+    index: u16,
+    presign_vec: *const c_uchar,
+    presign_len: usize,
+    tx_message: String,
+) {
+    let rt = runtime!();
+    let presign_share = unsafe {slice::from_raw_parts(presign_vec, presign_len)};
+    let presign_share: Vec<u8> = Vec::from(presign_share);
+
+    let presign_task = async move {
+        let isolate = Isolate::new(port_);
+        let result = gg20_mpc::sign_run(index, presign_share, tx_message).await;
+        isolate.post(result);
+    }.into_ffi();
+
+    rt.spawn(presign_task);
 }
