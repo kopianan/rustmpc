@@ -50,10 +50,6 @@ struct OfflineSignCli {
     address: surf::Url,
     #[structopt(short, long, default_value = "default-signing")]
     room: String,
-    #[structopt(short, long, use_delimiter(true))]
-    parties: Vec<u16>,
-    #[structopt(short, long)]
-    data_to_sign: String,
 }
 
 //MPC CONSTANTS
@@ -118,7 +114,7 @@ pub async fn presign_run(
 
     Ok(completed_offline_stage)
 }
-
+/*
 pub async fn sign_run (
     my_ind: u16,
     presign_share: Vec<u8>,
@@ -166,7 +162,7 @@ pub async fn sign_run (
     Ok(signature)
 }
 
-/*
+
 async fn sign(args: cli::SignArgs) -> Result<()> {
     //establish the signal client
     let signal_client = signal_client(args.server)

@@ -78,7 +78,7 @@ pub extern "C" fn wire_presign(
 
     rt.spawn(presign_task);
 }
-
+/*
 #[no_mangle]
 pub extern "C" fn wire_sign(
     port_: i64,
@@ -99,3 +99,4 @@ pub extern "C" fn wire_sign(
 
     rt.spawn(presign_task);
 }
+*/
