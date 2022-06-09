@@ -32,7 +32,7 @@ mod gg20_sm_manager;
 
 #[derive(Debug, StructOpt)]
 struct DkgCli {
-    #[structopt(short, long, default_value = "http://localhost:8000/")]
+    #[structopt(short, long, default_value = "http://10.0.2.2:8000/")]
     address: surf::Url,
     #[structopt(short, long, default_value = "default-keygen")]
     room: String,
@@ -46,7 +46,7 @@ struct DkgCli {
 
 #[derive(Debug, StructOpt)]
 struct OfflineSignCli {
-    #[structopt(short, long, default_value = "http://localhost:8000/")]
+    #[structopt(short, long, default_value = "http://10.0.2.2:8000/")]
     address: surf::Url,
     #[structopt(short, long, default_value = "default-signing")]
     room: String,
