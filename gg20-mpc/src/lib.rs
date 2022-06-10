@@ -87,6 +87,7 @@ pub async fn keygen_run(index:u16, port_: i64) -> Result<String> {
 pub async fn presign_run(
     index: u16,
     local_key: Vec<u8>,
+    port_: i64,
 ) -> Result<String> {
 
     let args: OfflineSignCli = OfflineSignCli::from_args();
@@ -104,7 +105,7 @@ pub async fn presign_run(
     tokio::pin!(incoming);
     tokio::pin!(outgoing);
 
-    let signing = OfflineStage::new(index, args_parties, local_key)?;
+    let signing = OfflineStage::new(index, args_parties, local_key, port_)?;
     let completed_offline_stage = round_based::AsyncProtocol::new(signing, incoming, outgoing)
         .run()
         .await
@@ -114,11 +115,11 @@ pub async fn presign_run(
 
     Ok(completed_offline_stage)
 }
-/*
+
 pub async fn sign_run (
     my_ind: u16,
     presign_share: Vec<u8>,
-    message: String,
+    message: &str,
 ) -> Result<String> {
     //MPC Signing Stage starts here
     let args: OfflineSignCli = OfflineSignCli::from_args();
@@ -162,7 +163,7 @@ pub async fn sign_run (
     Ok(signature)
 }
 
-
+/*
 async fn sign(args: cli::SignArgs) -> Result<()> {
     //establish the signal client
     let signal_client = signal_client(args.server)

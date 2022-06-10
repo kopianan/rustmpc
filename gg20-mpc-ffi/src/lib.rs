@@ -72,31 +72,38 @@ pub extern "C" fn wire_presign(
 
     let presign_task = async move {
         let isolate = Isolate::new(port_);
-        let result = gg20_mpc::presign_run(index, local_key).await;
+        let result = gg20_mpc::presign_run(index, local_key, port_).await;
         isolate.post(result);
     }.into_ffi();
 
     rt.spawn(presign_task);
 }
-/*
+
 #[no_mangle]
 pub extern "C" fn wire_sign(
     port_: i64,
     index: u16,
     presign_vec: *const c_uchar,
     presign_len: usize,
-    tx_message: String,
+    tx_message: *const c_char,
 ) {
     let rt = runtime!();
     let presign_share = unsafe {slice::from_raw_parts(presign_vec, presign_len)};
     let presign_share: Vec<u8> = Vec::from(presign_share);
 
+    let c_str = unsafe {
+        assert!(!tx_message.is_null());
+
+        CStr::from_ptr(tx_message)
+    };
+
+    let msg_str = c_str.to_str().unwrap();
+
     let presign_task = async move {
         let isolate = Isolate::new(port_);
-        let result = gg20_mpc::sign_run(index, presign_share, tx_message).await;
+        let result = gg20_mpc::sign_run(index, presign_share, msg_str).await;
         isolate.post(result);
     }.into_ffi();
 
     rt.spawn(presign_task);
 }
-*/
