@@ -80,8 +80,16 @@ pub async fn keygen_run(index: u16, port_: i64) -> Result<String> {
     Ok(output)
 }
 
+<<<<<<< HEAD
 pub async fn presign_run(index: u16, local_key: Vec<u8>, port_: i64) -> Result<String> {
     let isolate = Isolate::new(port_);
+=======
+pub async fn presign_run(
+    index: u16,
+    local_key: Vec<u8>,
+    port_: i64,
+) -> Result<String> {
+>>>>>>> 7770febb76513fcaaefaaf9d3ccc3de0191702be
 
     let args: OfflineSignCli = OfflineSignCli::from_args();
     isolate.post("OfflineSignCLI");
@@ -99,8 +107,12 @@ pub async fn presign_run(index: u16, local_key: Vec<u8>, port_: i64) -> Result<S
     tokio::pin!(incoming);
     tokio::pin!(outgoing);
 
+<<<<<<< HEAD
     let signing = OfflineStage::new(index, args_parties, local_key)?;
     isolate.post("signing");
+=======
+    let signing = OfflineStage::new(index, args_parties, local_key, port_)?;
+>>>>>>> 7770febb76513fcaaefaaf9d3ccc3de0191702be
     let completed_offline_stage = round_based::AsyncProtocol::new(signing, incoming, outgoing)
         .run()
         .await
@@ -112,11 +124,11 @@ pub async fn presign_run(index: u16, local_key: Vec<u8>, port_: i64) -> Result<S
 
     Ok(completed_offline_stage)
 }
-/*
+
 pub async fn sign_run (
     my_ind: u16,
     presign_share: Vec<u8>,
-    message: String,
+    message: &str,
 ) -> Result<String> {
     //MPC Signing Stage starts here
     let args: OfflineSignCli = OfflineSignCli::from_args();
@@ -155,7 +167,7 @@ pub async fn sign_run (
     Ok(signature)
 }
 
-
+/*
 async fn sign(args: cli::SignArgs) -> Result<()> {
     //establish the signal client
     let signal_client = signal_client(args.server)
