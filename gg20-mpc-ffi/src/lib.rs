@@ -2,8 +2,8 @@
 
 use allo_isolate::Isolate;
 use async_ffi::{FfiFuture, FutureExt};
-use std::os::raw::{c_char, c_uchar};
 use core::slice;
+use std::os::raw::{c_char, c_uchar};
 
 use gg20_mpc::*;
 
@@ -32,29 +32,28 @@ macro_rules! runtime {
 }
 
 //MPC CONSTANTS
-const THRESHOLD:u16 = 1;
-const PARTIES:u16 = 3;
+const THRESHOLD: u16 = 1;
+const PARTIES: u16 = 3;
 
 #[no_mangle]
 pub extern "C" fn http_local_run() {
     let rt = runtime!();
     let http_task = async move {
         let result = gg20_mpc::http_local_run().await;
-    }.into_ffi();
+    }
+    .into_ffi();
     rt.spawn(http_task);
 }
 
 #[no_mangle]
-pub extern "C" fn wire_keygen(
-    port_: i64,
-    index: u16,
-) {
+pub extern "C" fn wire_keygen(port_: i64, index: u16) {
     let rt = runtime!();
     let keygen_task = async move {
         let isolate = Isolate::new(port_);
         let result = gg20_mpc::keygen_run(index, port_).await;
         isolate.post(result);
-    }.into_ffi();
+    }
+    .into_ffi();
 
     rt.spawn(keygen_task);
 }
@@ -67,18 +66,19 @@ pub extern "C" fn wire_presign(
     local_key_len: usize,
 ) {
     let rt = runtime!();
-    let local_key = unsafe {slice::from_raw_parts(local_key_vec, local_key_len)};
+    let local_key = unsafe { slice::from_raw_parts(local_key_vec, local_key_len) };
     let local_key: Vec<u8> = Vec::from(local_key);
 
     let presign_task = async move {
         let isolate = Isolate::new(port_);
-        let result = gg20_mpc::presign_run(index, local_key).await;
+        let result = gg20_mpc::presign_run(index, local_key, port_).await;
         isolate.post(result);
-    }.into_ffi();
+    }
+    .into_ffi();
 
     rt.spawn(presign_task);
 }
-
+/*
 #[no_mangle]
 pub extern "C" fn wire_sign(
     port_: i64,
@@ -99,3 +99,4 @@ pub extern "C" fn wire_sign(
 
     rt.spawn(presign_task);
 }
+*/

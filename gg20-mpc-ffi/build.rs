@@ -39,7 +39,7 @@ fn main() {
 }   
 
 
-
+// cargo build --release --examples
 // cargo ndk -t armeabi-v7a -t arm64-v8a -o /Users/anan/Documents/CoinBit/FlutterRustMpc/rust_mpc_ffi/example/android/app/src/main/jniLibs build --release 
 // ln -s /Users/anan/Documents/CoinBit/FlutterRustMpc/rustmpc/target/universal/release/libgg20_mpc_ffi.a
 // cat /Users/anan/Documents/CoinBit/FlutterRustMpc/rustmpc/gg20-mpc-ffi/binding.h >> Classes/RustMpcFfiPlugin.h
