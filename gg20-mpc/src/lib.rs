@@ -92,7 +92,7 @@ pub async fn presign_run(
     let args: OfflineSignCli = OfflineSignCli::from_args();
 
     //Note: supposed to be an argument parsed in terminal, hardcoded for now
-    let args_parties = vec![1,2];
+    let args_parties = vec![2,1];
     let local_key = serde_json::from_slice(&local_key).context("offline_sign: failed to parse local share")?;
     
     let (_, incoming, outgoing) =
