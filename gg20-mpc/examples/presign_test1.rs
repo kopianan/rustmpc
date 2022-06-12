@@ -12,14 +12,11 @@ struct Cli {
     address: surf::Url,
     #[structopt(short, long, default_value = "default-signing")]
     room: String,
-    #[structopt(short, long, default_value = "default-signing")]
-    local_share: PathBuf,
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    //let args: Cli = Cli::from_args();
-    let local_share = tokio::fs::read("local-key1.json")
+    let local_share = tokio::fs::read("a.json")
         .await
         .context("cannot read local share")?;
     println!("{:?}",local_share);

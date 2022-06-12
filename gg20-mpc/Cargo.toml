@@ -9,6 +9,8 @@ edition = "2018"
 [features]
 default = ["curv-kzen/num-bigint"]
 cclst = ["class_group"]
+alpha-rays-fix = []
+presign-test = []
 
 [dependencies]
 round-based =  { path = "../round-based-protocol" }
