@@ -270,11 +270,19 @@ impl Round4 {
         let paillier_key_vec = (0..params.share_count)
             .map(|i| self.bc_vec[i as usize].e.clone())
             .collect::<Vec<EncryptionKey>>();
+        #[cfg(not(feature = "alpha-rays-fix"))]
+        let h1_h2_n_tilde_vec = self
+            .bc_vec
+            .iter()
+            .map(|bc1| bc1.dlog_statement_base_h1.clone())
+            .collect::<Vec<DLogStatement>>();
+        #[cfg(feature = "alpha-rays-fix")]
         let h1_h2_n_tilde_vec = self
             .bc_vec
             .iter()
             .map(|bc1| bc1.dlog_statement.clone())
             .collect::<Vec<DLogStatement>>();
+        
 
         let (head, tail) = self.y_vec.split_at(1);
         let y_sum = tail.iter().fold(head[0].clone(), |acc, x| acc + x);

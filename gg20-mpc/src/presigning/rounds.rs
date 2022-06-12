@@ -81,6 +81,9 @@ impl Round0 {
         let (bc1, decom1) = sign_keys.phase1_broadcast();
 
         let party_ek = self.local_key.paillier_key_vec[usize::from(self.local_key.i - 1)].clone();
+        #[cfg(not(feature = "alpha-rays-fix"))]
+        let m_a = MessageA::a(&sign_keys.k_i, &party_ek);
+        #[cfg(feature = "alpha-rays-fix")]
         let m_a = MessageA::a(&sign_keys.k_i, &party_ek, &self.local_key.h1_h2_n_tilde_vec);
 
         output.push(Msg {
@@ -144,6 +147,26 @@ impl Round1 {
             .map(|i| usize::from(i) - 1)
             .collect();
         let i = usize::from(self.i - 1);
+        #[cfg(not(feature = "alpha-rays-fix"))]
+        for j in 0..ttag - 1 {
+            let ind = if j < i { j } else { j + 1 };
+            let (m_b_gamma, beta_gamma, _beta_randomness, _beta_tag) = MessageB::b(
+                &self.sign_keys.gamma_i,
+                &self.local_key.paillier_key_vec[l_s[ind]],
+                m_a_vec[ind].clone(),
+            );
+            let (m_b_w, beta_wi, _, _) = MessageB::b(
+                &self.sign_keys.w_i,
+                &self.local_key.paillier_key_vec[l_s[ind]],
+                m_a_vec[ind].clone(),
+            );
+
+            m_b_gamma_vec.push(m_b_gamma);
+            beta_vec.push(beta_gamma);
+            m_b_w_vec.push(m_b_w);
+            ni_vec.push(beta_wi);
+        }
+        #[cfg(feature = "alpha-rays-fix")]
         for j in 0..ttag - 1 {
             let ind = if j < i { j } else { j + 1 };
             let (m_b_gamma, beta_gamma, _beta_randomness, _beta_tag) = MessageB::b(

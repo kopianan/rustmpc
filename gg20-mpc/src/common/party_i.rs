@@ -76,6 +76,18 @@ pub struct PartyPrivate {
     dk: DecryptionKey,
 }
 
+#[cfg(not(feature = "alpha-rays-fix"))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct KeyGenBroadcastMessage1 {
+    pub e: EncryptionKey,
+    pub dlog_statement_base_h1: DLogStatement,
+    pub dlog_statement_base_h2: DLogStatement,
+    pub com: BigInt,
+    pub correct_key_proof: NiCorrectKeyProof,
+    pub composite_dlog_proof_base_h1: CompositeDLogProof,
+    pub composite_dlog_proof_base_h2: CompositeDLogProof,
+}
+#[cfg(feature = "alpha-rays-fix")]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct KeyGenBroadcastMessage1 {
     pub e: EncryptionKey,
@@ -85,6 +97,7 @@ pub struct KeyGenBroadcastMessage1 {
     pub composite_dlog_proof_base_h1: CompositeDLogProof,
     pub composite_dlog_proof_base_h2: CompositeDLogProof,
 }
+
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct KeyGenDecommitMessage1 {
@@ -242,6 +255,17 @@ impl Keys {
             &BigInt::from_bytes(self.y_i.to_bytes(true).as_ref()),
             &blind_factor,
         );
+        #[cfg(not(feature = "alpha-rays-fix"))]
+        let bcm1 = KeyGenBroadcastMessage1 {
+            e: self.ek.clone(),
+            dlog_statement_base_h1,
+            dlog_statement_base_h2,
+            com,
+            correct_key_proof,
+            composite_dlog_proof_base_h1,
+            composite_dlog_proof_base_h2,
+        };
+        #[cfg(feature = "alpha-rays-fix")]
         let bcm1 = KeyGenBroadcastMessage1 {
             e: self.ek.clone(),
             dlog_statement: dlog_statement_base_h1,
@@ -256,7 +280,59 @@ impl Keys {
         };
         (bcm1, decom1)
     }
+    #[cfg(not(feature = "alpha-rays-fix"))]
+    pub fn phase1_verify_com_phase3_verify_correct_key_verify_dlog_phase2_distribute(
+        &self,
+        params: &Parameters,
+        decom_vec: &[KeyGenDecommitMessage1],
+        bc1_vec: &[KeyGenBroadcastMessage1],
+    ) -> Result<(VerifiableSS<Secp256k1>, Vec<Scalar<Secp256k1>>, usize), ErrorType> {
+        let mut bad_actors_vec = Vec::new();
+        // test length:
+        assert_eq!(decom_vec.len() as u16, params.share_count);
+        assert_eq!(bc1_vec.len() as u16, params.share_count);
+        // test paillier correct key, h1,h2 correct generation and test decommitments
+        let correct_key_correct_decom_all = (0..bc1_vec.len())
+            .map(|i| {
+                let test_res = HashCommitment::<Sha256>::create_commitment_with_user_defined_randomness(
+                    &BigInt::from_bytes(&decom_vec[i].y_i.to_bytes(true)),
+                    &decom_vec[i].blind_factor,
+                ) == bc1_vec[i].com
+                    && bc1_vec[i]
+                        .correct_key_proof
+                        .verify(&bc1_vec[i].e, zk_paillier::zkproofs::SALT_STRING)
+                        .is_ok()
+                    && bc1_vec[i]
+                        .composite_dlog_proof_base_h1
+                        .verify(&bc1_vec[i].dlog_statement_base_h1)
+                        .is_ok()
+                    && bc1_vec[i]
+                        .composite_dlog_proof_base_h2
+                        .verify(&bc1_vec[i].dlog_statement_base_h2)
+                        .is_ok();
+                if test_res == false {
+                    bad_actors_vec.push(i);
+                    false
+                } else {
+                    true
+                }
+            })
+            .all(|x| x);
 
+        let err_type = ErrorType {
+            error_type: "invalid key".to_string(),
+            bad_actors: bad_actors_vec,
+        };
+
+        let (vss_scheme, secret_shares) =
+            VerifiableSS::share(params.threshold, params.share_count, &self.u_i);
+        if correct_key_correct_decom_all {
+            Ok((vss_scheme, secret_shares.to_vec(), self.party_index))
+        } else {
+            Err(err_type)
+        }
+    }
+    #[cfg(feature = "alpha-rays-fix")]
     pub fn phase1_verify_com_phase3_verify_correct_key_verify_dlog_phase2_distribute(
         &self,
         params: &Parameters,
