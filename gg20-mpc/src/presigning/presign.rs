@@ -29,17 +29,18 @@ use round_based::{IsCritical, Msg, StateMachine};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::utilities::mta::MessageA;
-use curv::elliptic::curves::secp256_k1::Secp256k1;
 use crate::common::party_i::{SignBroadcastPhase1, SignDecommitPhase1, SignatureRecid};
 use crate::dkg::rounds::LocalKey;
+use crate::utilities::mta::MessageA;
+use curv::elliptic::curves::secp256_k1::Secp256k1;
 
+use crate::presigning::rounds::*;
+pub use crate::presigning::rounds::{
+    CompletedOfflineStage, Error as ProceedError, PartialSignature,
+};
 use crate::utilities::zk_pdl_with_slack::PDLwSlackProof;
 use curv::BigInt;
-use crate::presigning::rounds::*;
-pub use crate::presigning::rounds::{CompletedOfflineStage, Error as ProceedError, PartialSignature};
 
-use allo_isolate::Isolate;
 /// Offline Stage of GG20 signing
 ///
 /// Successfully carried out Offline Stage will produce [CompletedOfflineStage] that can
@@ -58,7 +59,6 @@ pub struct OfflineStage {
 
     party_i: u16,
     party_n: u16,
-    port   : i64,
 }
 
 impl OfflineStage {
@@ -72,7 +72,7 @@ impl OfflineStage {
     /// party local secret share `local_key`.
     ///
     /// Returns error if given arguments are contradicting.
-    pub fn new(i: u16, s_l: Vec<u16>, local_key: LocalKey<Secp256k1>, p: i64) -> Result<Self> {
+    pub fn new(i: u16, s_l: Vec<u16>, local_key: LocalKey<Secp256k1>) -> Result<Self> {
         if s_l.len() < 2 {
             return Err(Error::TooFewParties);
         }
@@ -112,7 +112,6 @@ impl OfflineStage {
 
             party_i: i,
             party_n: n,
-            port: p,
         })
     }
 
@@ -255,11 +254,14 @@ impl StateMachine for OfflineStage {
     fn handle_incoming(&mut self, msg: Msg<Self::MessageBody>) -> Result<(), Self::Err> {
         let current_round = self.current_round();
 
-        let isolate = Isolate::new(self.port);
-        println!("current_round = {}, msg.sender = {:#?}, msg.receiver = {:#?}", current_round, msg.sender, msg.receiver);
-        let s1 = format!("current_round = {}, msg.sender = {:#?}, msg.receiver = {:#?}", current_round, msg.sender, msg.receiver);
-        isolate.post(s1);
-
+        println!(
+            "current_round = {}, msg.sender = {:#?}, msg.receiver = {:#?}",
+            current_round, msg.sender, msg.receiver
+        );
+        let s1 = format!(
+            "current_round = {}, msg.sender = {:#?}, msg.receiver = {:#?}",
+            current_round, msg.sender, msg.receiver
+        );
         match msg.body {
             OfflineProtocolMessage(OfflineM::M1(m)) => {
                 let store = self
@@ -362,15 +364,11 @@ impl StateMachine for OfflineStage {
     }
 
     fn message_queue(&mut self) -> &mut Vec<Msg<Self::MessageBody>> {
-        let isolate = Isolate::new(self.port);
-        isolate.post("message_queue");
         println!("message_queue");
         &mut self.msgs_queue.0
     }
 
     fn wants_to_proceed(&self) -> bool {
-        let isolate = Isolate::new(self.port);
-        isolate.post("wants_to_proceed");
         println!("wants_to_proceed");
         let store1_wants_more = self.msgs1.as_ref().map(|s| s.wants_more()).unwrap_or(false);
         let store2_wants_more = self.msgs2.as_ref().map(|s| s.wants_more()).unwrap_or(false);
@@ -392,36 +390,24 @@ impl StateMachine for OfflineStage {
     }
 
     fn proceed(&mut self) -> Result<(), Self::Err> {
-        let isolate = Isolate::new(self.port);
-        isolate.post("proceed");
-        println!("proceed");
         self.proceed_round(true)
     }
 
     fn round_timeout(&self) -> Option<Duration> {
-        let isolate = Isolate::new(self.port);
-        isolate.post("round_timeout");
-        println!("round_timeout");
         None
     }
 
     fn round_timeout_reached(&mut self) -> Self::Err {
-        let isolate = Isolate::new(self.port);
-        isolate.post("round_timeout_reached");
         println!("round_timeout_reached");
         panic!("no timeout was set")
     }
 
     fn is_finished(&self) -> bool {
-        let isolate = Isolate::new(self.port);
-        isolate.post("is_finished");
         println!("is_finished");
         matches!(&self.round, OfflineR::Finished(_))
     }
 
     fn pick_output(&mut self) -> Option<Result<Self::Output, Self::Err>> {
-        let isolate = Isolate::new(self.port);
-        isolate.post("pick_output");
         println!("pick_output");
         match self.round {
             OfflineR::Finished(_) => (),

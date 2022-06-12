@@ -59,6 +59,32 @@ pub extern "C" fn wire_keygen(port_: i64, index: u16) {
 }
 
 #[no_mangle]
+pub extern "C" fn wire_keygen_vector(port_: i64, index: u16) {
+    let rt = runtime!();
+    let keygen_task = async move {
+        let isolate = Isolate::new(port_);
+        let result = gg20_mpc::keygen_run_vector(index).await;
+        isolate.post(result);
+    }
+    .into_ffi();
+
+    rt.spawn(keygen_task);
+}
+
+#[no_mangle]
+pub extern "C" fn wire_keygen_string(port_: i64, index: u16) {
+    let rt = runtime!();
+    let keygen_task = async move {
+        let isolate = Isolate::new(port_);
+        let result = gg20_mpc::keygen_run_string(index).await;
+        isolate.post(result);
+    }
+    .into_ffi();
+
+    rt.spawn(keygen_task);
+}
+
+#[no_mangle]
 pub extern "C" fn wire_presign(
     port_: i64,
     index: u16,
@@ -66,12 +92,13 @@ pub extern "C" fn wire_presign(
     local_key_len: usize,
 ) {
     let rt = runtime!();
+    let isolate = Isolate::new(port_);
+
     let local_key = unsafe { slice::from_raw_parts(local_key_vec, local_key_len) };
     let local_key: Vec<u8> = Vec::from(local_key);
 
     let presign_task = async move {
-        let isolate = Isolate::new(port_);
-        let result = gg20_mpc::presign_run(index, local_key, port_).await;
+        let result = gg20_mpc::presign_run(index, local_key).await;
         isolate.post(result);
     }
     .into_ffi();
@@ -88,7 +115,7 @@ pub extern "C" fn wire_sign(
     tx_message: *const c_char,
 ) {
     let rt = runtime!();
-    let presign_share = unsafe {slice::from_raw_parts(presign_vec, presign_len)};
+    let presign_share = unsafe { slice::from_raw_parts(presign_vec, presign_len) };
     let presign_share: Vec<u8> = Vec::from(presign_share);
 
     let c_str = unsafe {
@@ -103,7 +130,8 @@ pub extern "C" fn wire_sign(
         let isolate = Isolate::new(port_);
         let result = gg20_mpc::sign_run(index, presign_share, msg_str).await;
         isolate.post(result);
-    }.into_ffi();
+    }
+    .into_ffi();
 
     rt.spawn(presign_task);
 }

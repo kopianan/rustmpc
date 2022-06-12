@@ -16,10 +16,10 @@ use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use thiserror::Error;
 
-use private::InternalError;
-use crate::common::party_i::{KeyGenBroadcastMessage1, KeyGenDecommitMessage1};
 pub use super::rounds::{LocalKey, ProceedError};
 use super::rounds::{Round0, Round1, Round2, Round3, Round4};
+use crate::common::party_i::{KeyGenBroadcastMessage1, KeyGenDecommitMessage1};
+use private::InternalError;
 
 use allo_isolate::Isolate;
 /// Keygen protocol state machine
@@ -38,7 +38,6 @@ pub struct Keygen {
 
     party_i: u16,
     party_n: u16,
-    port   : i64,
 }
 
 impl Keygen {
@@ -52,7 +51,7 @@ impl Keygen {
     /// * `n` is less than 2, returns [Error::TooFewParties]
     /// * `t` is not in range `[1; n-1]`, returns [Error::InvalidThreshold]
     /// * `i` is not in range `[1; n]`, returns [Error::InvalidPartyIndex]
-    pub fn new(i: u16, t: u16, n: u16, p: i64) -> Result<Self> {
+    pub fn new(i: u16, t: u16, n: u16) -> Result<Self> {
         if n < 2 {
             return Err(Error::TooFewParties);
         }
@@ -74,7 +73,6 @@ impl Keygen {
 
             party_i: i,
             party_n: n,
-            port: p,
         };
 
         state.proceed_round(false)?;
@@ -91,7 +89,6 @@ impl Keygen {
     /// Proceeds round state if it received enough messages and if it's cheap to compute or
     /// `may_block == true`
     fn proceed_round(&mut self, may_block: bool) -> Result<()> {
-        let isolate = Isolate::new(self.port);
         let store1_wants_more = self.msgs1.as_ref().map(|s| s.wants_more()).unwrap_or(false);
         let store2_wants_more = self.msgs2.as_ref().map(|s| s.wants_more()).unwrap_or(false);
         let store3_wants_more = self.msgs3.as_ref().map(|s| s.wants_more()).unwrap_or(false);
@@ -191,14 +188,16 @@ impl StateMachine for Keygen {
     type Output = LocalKey<Secp256k1>;
 
     fn handle_incoming(&mut self, msg: Msg<Self::MessageBody>) -> Result<()> {
-        let isolate = Isolate::new(self.port);
-
         let current_round = self.current_round();
 
-        println!("current_round = {}, msg.sender = {:#?}, msg.receiver = {:#?}", current_round, msg.sender, msg.receiver);
-        let s1 = format!("current_round = {}, msg.sender = {:#?}, msg.receiver = {:#?}", current_round, msg.sender, msg.receiver);
-        isolate.post(s1);
-
+        println!(
+            "current_round = {}, msg.sender = {:#?}, msg.receiver = {:#?}",
+            current_round, msg.sender, msg.receiver
+        );
+        let s1 = format!(
+            "current_round = {}, msg.sender = {:#?}, msg.receiver = {:#?}",
+            current_round, msg.sender, msg.receiver
+        );
         match msg.body {
             ProtocolMessage(M::Round1(m)) => {
                 let store = self
@@ -272,16 +271,11 @@ impl StateMachine for Keygen {
     }
 
     fn message_queue(&mut self) -> &mut Vec<Msg<Self::MessageBody>> {
-        let isolate = Isolate::new(self.port);
-        isolate.post("message_queue");
         println!("message_queue");
-        
         &mut self.msgs_queue
     }
 
     fn wants_to_proceed(&self) -> bool {
-        let isolate = Isolate::new(self.port);
-        isolate.post("wants_to_proceed");
         println!("wants_to_proceed");
         let store1_wants_more = self.msgs1.as_ref().map(|s| s.wants_more()).unwrap_or(false);
         let store2_wants_more = self.msgs2.as_ref().map(|s| s.wants_more()).unwrap_or(false);
@@ -299,36 +293,26 @@ impl StateMachine for Keygen {
     }
 
     fn proceed(&mut self) -> Result<()> {
-        let isolate = Isolate::new(self.port);
-        isolate.post("proceed");
         println!("proceed");
         self.proceed_round(true)
     }
 
     fn round_timeout(&self) -> Option<Duration> {
-        let isolate = Isolate::new(self.port);
-        isolate.post("round_timeout");
         println!("round_timeout");
         None
     }
 
     fn round_timeout_reached(&mut self) -> Self::Err {
-        let isolate = Isolate::new(self.port);
-        isolate.post("round_timeout_reached");
         println!("round_timeout_reached");
         panic!("no timeout was set")
     }
 
     fn is_finished(&self) -> bool {
-        let isolate = Isolate::new(self.port);
-        isolate.post("is_finished");
         println!("is_finished");
         matches!(self.round, R::Final(_))
     }
 
     fn pick_output(&mut self) -> Option<Result<Self::Output>> {
-        let isolate = Isolate::new(self.port);
-        isolate.post("pick_output");
         println!("pick_output");
         match self.round {
             R::Final(_) => (),

@@ -31,7 +31,7 @@ mod gg20_sm_manager;
 
 #[derive(Debug, StructOpt)]
 struct DkgCli {
-    #[structopt(short, long, default_value = "http://localhost:8000/")]
+    #[structopt(short, long, default_value = "http://10.0.2.2:8000/")]
     address: surf::Url,
     #[structopt(short, long, default_value = "default-keygen")]
     room: String,
@@ -45,7 +45,7 @@ struct DkgCli {
 
 #[derive(Debug, StructOpt)]
 struct OfflineSignCli {
-    #[structopt(short, long, default_value = "http://localhost:8000/")]
+    #[structopt(short, long, default_value = "http://10.0.2.2:8000/")]
     address: surf::Url,
     #[structopt(short, long, default_value = "default-signing")]
     room: String,
@@ -59,7 +59,7 @@ pub async fn http_local_run() {
     gg20_sm_manager::run_http();
 }
 
-pub async fn keygen_run(index: u16, port_: i64) -> Result<String> {
+pub async fn keygen_run(index: u16, port_: i64) -> Result<Vec<u8>> {
     let args: DkgCli = DkgCli::from_args();
 
     let (_i, incoming, outgoing) = join_computation(args.address, &args.room)
@@ -70,71 +70,94 @@ pub async fn keygen_run(index: u16, port_: i64) -> Result<String> {
     tokio::pin!(incoming);
     tokio::pin!(outgoing);
 
-    let keygen = Keygen::new(index, THRESHOLD, PARTIES, port_)?;
+    let keygen = Keygen::new(index, THRESHOLD, PARTIES)?;
+    let output = round_based::AsyncProtocol::new(keygen, incoming, outgoing)
+        .run()
+        .await
+        .map_err(|e| anyhow!("dkg: protocol execution terminated with error: {}", e))?;
+    // let output = serde_json::to_string(&output).unwrap();
+    let output = serde_json::to_vec_pretty(&output).context("serialize output")?;
+    // let output = serde_json::to_vec_pretty(&output).context("serialize output")?;
+    // let s = match str::from_utf8(&mut output.as_slice()) {
+    //     Ok(v) => v,
+    //     Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+    // };
+    // Ok(s.to_owned())
+    Ok(output)
+}
+pub async fn keygen_run_string(index: u16) -> Result<String> {
+    let args: DkgCli = DkgCli::from_args();
+
+    let (_i, incoming, outgoing) = join_computation(args.address, &args.room)
+        .await
+        .context("dkg:failed join computation")?;
+
+    let incoming = incoming.fuse();
+    tokio::pin!(incoming);
+    tokio::pin!(outgoing);
+
+    let keygen = Keygen::new(index, THRESHOLD, PARTIES)?;
     let output = round_based::AsyncProtocol::new(keygen, incoming, outgoing)
         .run()
         .await
         .map_err(|e| anyhow!("dkg: protocol execution terminated with error: {}", e))?;
     let output = serde_json::to_string(&output).unwrap();
-
+    // let output = serde_json::to_vec_pretty(&output).context("serialize output")?;
     Ok(output)
 }
+pub async fn keygen_run_vector(index: u16) -> Result<Vec<u8>> {
+    let args: DkgCli = DkgCli::from_args();
 
-<<<<<<< HEAD
-pub async fn presign_run(index: u16, local_key: Vec<u8>, port_: i64) -> Result<String> {
-    let isolate = Isolate::new(port_);
-=======
-pub async fn presign_run(
-    index: u16,
-    local_key: Vec<u8>,
-    port_: i64,
-) -> Result<String> {
->>>>>>> 7770febb76513fcaaefaaf9d3ccc3de0191702be
+    let (_i, incoming, outgoing) = join_computation(args.address, &args.room)
+        .await
+        .context("dkg:failed join computation")?;
 
-    let args: OfflineSignCli = OfflineSignCli::from_args();
-    isolate.post("OfflineSignCLI");
-    //Note: supposed to be an argument parsed in terminal, hardcoded for now
-    let args_parties = vec![2, 1];
-    let local_key =
-        serde_json::from_slice(&local_key).context("offline_sign: failed to parse local share")?;
-    isolate.post("Local Key");
-    let (_, incoming, outgoing) =
-        join_computation(args.address.clone(), &format!("{}-offline", args.room))
-            .await
-            .context("offline_sign: failed join computation")?;
-    isolate.post("Computation");
     let incoming = incoming.fuse();
     tokio::pin!(incoming);
     tokio::pin!(outgoing);
 
-<<<<<<< HEAD
+    let keygen = Keygen::new(index, THRESHOLD, PARTIES)?;
+    let output = round_based::AsyncProtocol::new(keygen, incoming, outgoing)
+        .run()
+        .await
+        .map_err(|e| anyhow!("dkg: protocol execution terminated with error: {}", e))?;
+    // let output = serde_json::to_string(&output).unwrap();
+    let output = serde_json::to_vec_pretty(&output).context("serialize output")?;
+    Ok(output)
+}
+
+pub async fn presign_run(index: u16, local_key: Vec<u8>) -> Result<String> {
+    let args: OfflineSignCli = OfflineSignCli::from_args();
+    //Note: supposed to be an argument parsed in terminal, hardcoded for now
+    let args_parties = vec![2, 1];
+    let local_key =
+        serde_json::from_slice(&local_key).context("offline_sign: failed to parse local share")?;
+    let (_, incoming, outgoing) =
+        join_computation(args.address.clone(), &format!("{}-offline", args.room))
+            .await
+            .context("offline_sign: failed join computation")?;
+    let incoming = incoming.fuse();
+    tokio::pin!(incoming);
+    tokio::pin!(outgoing);
+
     let signing = OfflineStage::new(index, args_parties, local_key)?;
-    isolate.post("signing");
-=======
-    let signing = OfflineStage::new(index, args_parties, local_key, port_)?;
->>>>>>> 7770febb76513fcaaefaaf9d3ccc3de0191702be
     let completed_offline_stage = round_based::AsyncProtocol::new(signing, incoming, outgoing)
         .run()
         .await
         .map_err(|e| anyhow!("offline_sign:  with error: {}", e))?;
-
-    isolate.post("Completed Offline Stage");
 
     let completed_offline_stage = serde_json::to_string(&completed_offline_stage).unwrap();
 
     Ok(completed_offline_stage)
 }
 
-pub async fn sign_run (
-    my_ind: u16,
-    presign_share: Vec<u8>,
-    message: &str,
-) -> Result<String> {
+pub async fn sign_run(my_ind: u16, presign_share: Vec<u8>, message: &str) -> Result<String> {
     //MPC Signing Stage starts here
     let args: OfflineSignCli = OfflineSignCli::from_args();
     //Note: supposed to be an argument parsed in terminal, hardcoded for now
-    let args_parties = vec![1,2];
-    let completed_offline_stage = serde_json::from_slice(&presign_share).context("parse local presign share")?;
+    let args_parties = vec![1, 2];
+    let completed_offline_stage =
+        serde_json::from_slice(&presign_share).context("parse local presign share")?;
     let number_of_parties = args_parties.len();
     let (_, incoming, outgoing) = join_computation(args.address, &format!("{}-online", args.room))
         .await
