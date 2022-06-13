@@ -1,7 +1,6 @@
-use allo_isolate::Isolate;
 use std::path::Path;
-use std::time::Duration;
 use std::str;
+use std::time::Duration;
 
 use anyhow::{anyhow, bail, ensure, Context, Result};
 use structopt::StructOpt;
@@ -31,8 +30,8 @@ use gg20_sm_client::join_computation;
 mod gg20_sm_manager;
 
 //MPC CONSTANTS
-const THRESHOLD:u16 = 1;
-const PARTIES:u16 = 3;
+const THRESHOLD: u16 = 1;
+const PARTIES: u16 = 3;
 
 #[derive(Debug, StructOpt)]
 struct DkgCli {
@@ -60,12 +59,11 @@ struct OfflineSignCli {
     room: String,
 }
 
-pub async fn http_local_run()
-{
+pub async fn http_local_run() {
     gg20_sm_manager::run_http();
 }
 
-pub async fn keygen_run(index: u16, port_: i64) -> Result<Vec<u8>> {
+pub async fn keygen_run(index: u16) -> Result<String> {
     let args: DkgCli = DkgCli::from_args();
 
     let (_i, incoming, outgoing) = join_computation(args.address, &args.room)
@@ -81,37 +79,6 @@ pub async fn keygen_run(index: u16, port_: i64) -> Result<Vec<u8>> {
         .run()
         .await
         .map_err(|e| anyhow!("dkg: protocol execution terminated with error: {}", e))?;
-<<<<<<< HEAD
-    // let output = serde_json::to_string(&output).unwrap();
-    let output = serde_json::to_vec_pretty(&output).context("serialize output")?;
-    // let output = serde_json::to_vec_pretty(&output).context("serialize output")?;
-    // let s = match str::from_utf8(&mut output.as_slice()) {
-    //     Ok(v) => v,
-    //     Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
-    // };
-    // Ok(s.to_owned())
-    Ok(output)
-}
-pub async fn keygen_run_string(index: u16) -> Result<String> {
-    let args: DkgCli = DkgCli::from_args();
-
-    let (_i, incoming, outgoing) = join_computation(args.address, &args.room)
-        .await
-        .context("dkg:failed join computation")?;
-
-    let incoming = incoming.fuse();
-    tokio::pin!(incoming);
-    tokio::pin!(outgoing);
-
-    let keygen = Keygen::new(index, THRESHOLD, PARTIES)?;
-    let output = round_based::AsyncProtocol::new(keygen, incoming, outgoing)
-        .run()
-        .await
-        .map_err(|e| anyhow!("dkg: protocol execution terminated with error: {}", e))?;
-    let output = serde_json::to_string(&output).unwrap();
-    // let output = serde_json::to_vec_pretty(&output).context("serialize output")?;
-    Ok(output)
-=======
 
     let output = serde_json::to_vec_pretty(&output).context("serialize output")?;
     /*
@@ -132,8 +99,6 @@ pub async fn keygen_run_string(index: u16) -> Result<String> {
     };
 
     Ok(s.to_owned())
-    
->>>>>>> 1e39f9c0bb5fdd691b115fdcb917a1c531b164e5
 }
 pub async fn keygen_run_vector(index: u16) -> Result<Vec<u8>> {
     let args: DkgCli = DkgCli::from_args();
@@ -160,8 +125,8 @@ pub async fn presign_run(index: u16, local_key: Vec<u8>) -> Result<String> {
     let args: OfflineSignCli = OfflineSignCli::from_args();
     //Note: supposed to be an argument parsed in terminal, hardcoded for now
     let args_parties = vec![1, 2];
-    let local_key = serde_json::from_slice(&local_key).context("offline_sign: failed to parse local share")?;
-    
+    let local_key =
+        serde_json::from_slice(&local_key).context("offline_sign: failed to parse local share")?;
     let (_, incoming, outgoing) =
         join_computation(args.address.clone(), &format!("{}-offline", args.room))
             .await

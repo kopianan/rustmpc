@@ -19,9 +19,8 @@ async fn main() -> Result<()> {
     let local_share = tokio::fs::read("a.json")
         .await
         .context("cannot read local share")?;
-    println!("{:?}",local_share);
-    let result = gg20_mpc::presign_run(1,local_share,1).await;
-    println!("{:?}",result);
+    println!("{:?}", local_share);
+    let result = gg20_mpc::presign_run(1, local_share).await;
+    println!("{:?}", result);
     Ok(())
-
 }

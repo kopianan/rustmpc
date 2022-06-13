@@ -50,7 +50,7 @@ pub extern "C" fn wire_keygen(port_: i64, index: u16) {
     let rt = runtime!();
     let keygen_task = async move {
         let isolate = Isolate::new(port_);
-        let result = gg20_mpc::keygen_run(index, port_).await;
+        let result = gg20_mpc::keygen_run(index).await;
         isolate.post(result);
     }
     .into_ffi();
@@ -58,31 +58,31 @@ pub extern "C" fn wire_keygen(port_: i64, index: u16) {
     rt.spawn(keygen_task);
 }
 
-#[no_mangle]
-pub extern "C" fn wire_keygen_vector(port_: i64, index: u16) {
-    let rt = runtime!();
-    let keygen_task = async move {
-        let isolate = Isolate::new(port_);
-        let result = gg20_mpc::keygen_run_vector(index).await;
-        isolate.post(result);
-    }
-    .into_ffi();
+// #[no_mangle]
+// pub extern "C" fn wire_keygen_vector(port_: i64, index: u16) {
+//     let rt = runtime!();
+//     let keygen_task = async move {
+//         let isolate = Isolate::new(port_);
+//         let result = gg20_mpc::keygen_run_vector(index).await;
+//         isolate.post(result);
+//     }
+//     .into_ffi();
 
-    rt.spawn(keygen_task);
-}
+//     rt.spawn(keygen_task);
+// }
 
-#[no_mangle]
-pub extern "C" fn wire_keygen_string(port_: i64, index: u16) {
-    let rt = runtime!();
-    let keygen_task = async move {
-        let isolate = Isolate::new(port_);
-        let result = gg20_mpc::keygen_run_string(index).await;
-        isolate.post(result);
-    }
-    .into_ffi();
+// #[no_mangle]
+// pub extern "C" fn wire_keygen_string(port_: i64, index: u16) {
+//     let rt = runtime!();
+//     let keygen_task = async move {
+//         let isolate = Isolate::new(port_);
+//         let result = gg20_mpc::keygen_run(index).await;
+//         isolate.post(result);
+//     }
+//     .into_ffi();
 
-    rt.spawn(keygen_task);
-}
+//     rt.spawn(keygen_task);
+// }
 
 #[no_mangle]
 pub extern "C" fn wire_presign(
